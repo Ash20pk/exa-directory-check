@@ -1,7 +1,8 @@
 """Directory Check: verify health-plan provider listings against the live web.
 
     GET  /api/listings   pull real listings from the federal NPI registry
-    POST /api/verify     one listing -> Exa search -> LLM compares listing vs. web
+    POST /api/verify     one listing -> Exa search -> LLM compares listing vs. web,
+                         streamed as two JSON lines so the UI can show each step land
 
     uv run uvicorn app:app --port 8000
 """
@@ -19,7 +20,7 @@ from urllib.parse import urlparse
 import anthropic
 import httpx
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
@@ -32,6 +33,7 @@ LLM_MODEL = os.environ.get("LLM_MODEL", "anthropic/claude-opus-5.5")
 NPI_MIRRORS = [
     "npiregistry.cms.hhs.gov", "npino.com", "npidb.org", "hipaaspace.com",
     "npiprofile.com", "opennpi.com", "npinumberlookup.org", "nppes.cms.hhs.gov",
+    "npimap.com", "npiguide.com",
 ]
 
 app = FastAPI(title="Directory Check")
@@ -107,6 +109,7 @@ class Listing(BaseModel):
 
 
 FieldStatus = Literal["matches", "differs", "not_found"]
+SourceKind = Literal["first_party", "professional", "aggregator", "other", "different_person"]
 
 
 class Finding(BaseModel):
@@ -125,6 +128,7 @@ class Check(BaseModel):
     practice_status: Literal["active", "moved", "retired", "left_practice", "deceased", "unknown"]
     status_sources: list[str] = Field(default_factory=list)
     confidence: Literal["low", "medium", "high"]
+    source_kinds: dict[str, SourceKind] = Field(default_factory=dict, description="one entry per source id")
 
 
 SYSTEM = """You check one health-plan provider directory listing against web sources.
@@ -143,6 +147,11 @@ Judging sources:
   are fine; a different building or city is not). Phone numbers match only if digits match.
 - practice_status: "moved" if they practise at a different location now, "left_practice"
   if they left the listed group, "retired"/"deceased" only on explicit evidence.
+
+source_kinds: classify every source id. "first_party" = the provider's own practice site
+or their health system's or hospital's profile of them; "professional" = a dated
+professional profile such as LinkedIn or Doximity; "aggregator" = a listing site or data
+broker; "different_person" = about someone else; "other" = anything else.
 
 result:
 - "confirmed": an authoritative source supports the listed location and nothing credible contradicts it
@@ -227,21 +236,33 @@ def ask(listing: Listing, sources: list[dict]) -> Check:
     raise AssertionError("unreachable")
 
 
+def line(obj: dict) -> str:
+    return json.dumps(obj) + "\n"
+
+
 @app.post("/api/verify")
-async def verify(listing: Listing) -> dict:
-    sources, exa = await exa_search(listing)
-    if not sources:
-        return {"check": None, "sources": [], "exa": exa}
-    t0 = time.perf_counter()
-    check = await asyncio.to_thread(ask, listing, sources)
-    valid = {s["id"] for s in sources}
-    for f in (check.location, check.phone):
-        f.sources = [i for i in f.sources if i in valid]
-    check.accepting_sources = [i for i in check.accepting_sources if i in valid]
-    check.status_sources = [i for i in check.status_sources if i in valid]
-    return {
-        "check": check.model_dump(),
-        "sources": sources,
-        "exa": exa,
-        "llm_ms": round((time.perf_counter() - t0) * 1000),
-    }
+async def verify(listing: Listing) -> StreamingResponse:
+    """Two newline-delimited JSON events: the sources as soon as Exa returns, then the check."""
+
+    async def run():
+        try:
+            sources, exa = await exa_search(listing)
+            yield line({"stage": "sources", "sources": sources, "exa": exa})
+            if not sources:
+                yield line({"stage": "check", "check": None})
+                return
+            t0 = time.perf_counter()
+            check = await asyncio.to_thread(ask, listing, sources)
+            valid = {s["id"] for s in sources}
+            for f in (check.location, check.phone):
+                f.sources = [i for i in f.sources if i in valid]
+            check.accepting_sources = [i for i in check.accepting_sources if i in valid]
+            check.status_sources = [i for i in check.status_sources if i in valid]
+            check.source_kinds = {k: v for k, v in check.source_kinds.items() if k in valid}
+            yield line({"stage": "check", "check": check.model_dump(), "llm_ms": round((time.perf_counter() - t0) * 1000)})
+        except HTTPException as exc:
+            yield line({"stage": "error", "detail": str(exc.detail)})
+        except Exception as exc:  # the response has started; report the failure in-band
+            yield line({"stage": "error", "detail": f"{type(exc).__name__}: {exc}"})
+
+    return StreamingResponse(run(), media_type="application/x-ndjson")

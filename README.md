@@ -18,8 +18,9 @@ that means outreach calls and provider attestations, one listing at a time.
 
 ## What it does
 
-1. **Load listings.** Real providers from the CMS NPI Registry, the self-reported data
-   that directories are built from. In production this would be Elevance's own directory,
+1. **Load listings.** The page opens on real providers from the CMS NPI Registry, the
+   self-reported data that directories are built from. Change the specialty or city to
+   load another set. In production this would be Elevance's own directory,
    via its public Provider Directory API.
 2. **Check each listing.** One Exa search per provider finds the pages that describe
    where they practise today: the practice's own site, health-system profiles and dated
@@ -28,7 +29,9 @@ that means outreach calls and provider attestations, one listing at a time.
 3. **Compare and cite.** An LLM compares the listing with that evidence. It weights
    first-party pages over aggregators and returns *confirmed*, *needs update* or
    *unverified*. For each field it shows the stale value struck out and the current
-   value beside it, with the sources behind it.
+   value beside it, with the sources behind it. The evidence panel groups those sources
+   by how far they can be trusted, and the check streams, so each row shows the search
+   and then the read as they happen.
 
 A first real run on 12 Indianapolis psychiatrists flagged 3 for update. One had moved
 to Anchorage, one had retired from a corporate role in 2021, and one now practises in

@@ -3,468 +3,643 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14213d">
 <title>Directory Check</title>
-<link rel="preload" href="/static/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/static/fonts/atkinson-hyperlegible-next-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-/* Self-hosted Public Sans, plus an Arial fallback tuned to the same metrics,
-   so text occupies the same space before and after the font arrives. */
-@font-face{font-family:"Public Sans";src:url(/static/fonts/public-sans-latin.woff2) format("woff2");font-weight:400 700;font-display:swap}
-@font-face{font-family:"PS Fallback";src:local("Arial");size-adjust:93.25%;ascent-override:101.88%;descent-override:24.13%;line-gap-override:0%}
+/* Atkinson Hyperlegible Next: drawn so that 0/O, 1/l/I and 8/B cannot be confused,
+   which is the whole job when the page is about one wrong digit in a phone number.
+   Self-hosted, with an Arial fallback tuned to the same metrics so nothing moves on swap. */
+@font-face{font-family:"Atkinson Next";src:url(/static/fonts/atkinson-hyperlegible-next-latin.woff2) format("woff2");font-weight:200 800;font-display:swap}
+@font-face{font-family:"Atkinson Fallback";src:local("Arial");size-adjust:99.51%;ascent-override:98.89%;descent-override:31.76%;line-gap-override:0%}
 
 :root{
-  --bg:#f3f6f5; --sheet:#fff; --sheet-2:#f8faf9; --ink:#0f2a2e; --ink-2:#3f5559; --ink-3:#74878a;
-  --line:#d5dfdc; --line-2:#e7eeec;
-  --ok:#17785a; --ok-bg:#e1f2ea; --upd:#a24f0c; --upd-bg:#fcecd9; --unk:#5d6a6c; --unk-bg:#eceff0;
-  --del:#a3261f; --del-bg:#fbe6e4; --ins:#145f47; --ins-bg:#d8efe3; --focus:#0b5cad; --link:#0b5cad;
-  --row:76px; --radius:10px;
-  --font:"Public Sans","PS Fallback",system-ui,sans-serif;
+  /* paper: the directory as the plan holds it */
+  --paper:#fff; --ink:#14213d; --ink-2:#54607a; --rule:#dfe4ec; --rule-2:#eef1f6; --tint:#f4f6fa;
+  /* pencils: red strikes what is wrong, blue writes what the web says, green ticks what holds */
+  --red:#c62537; --red-bg:#fbe9eb; --blue:#2253d4; --blue-bg:#e3ebff; --green:#0f7b4f; --grey:#54607a;
+  /* night: the web side */
+  --night:#14213d; --night-2:#1c2c50; --night-line:#2b3d66; --snow:#edf1fa; --snow-2:#a3b0cc;
+  --n-red:#ff8f99; --n-blue:#9dbcff; --n-green:#6fd9a6; --n-amber:#e9bd6c;
+  --row:84px; --pad:40px; --pane:clamp(420px,34vw,620px);
+  --font:"Atkinson Next","Atkinson Fallback",system-ui,sans-serif;
+  --ease:cubic-bezier(.2,.8,.2,1);
 }
 *{box-sizing:border-box}
-html{scrollbar-gutter:stable;-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--font);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+html{-webkit-text-size-adjust:100%;scrollbar-gutter:stable}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/22px var(--font);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
 button,input,select{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 [hidden]{display:none!important}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+svg.g{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 
-/* ---------- top bar */
-.top{background:var(--ink);color:#fff}
-.top .in{max-width:1280px;margin:0 auto;height:56px;padding:0 24px;display:flex;align-items:center;gap:16px}
-.mark{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em}
-.mark svg{flex:none}
-.ctx{color:#a9c1bf;font-size:13.5px;border-left:1px solid #2f4a4e;padding-left:16px}
-.top .credit{margin-left:auto;color:#a9c1bf;font-size:13px}
+.app{display:grid;grid-template-columns:minmax(0,1fr) var(--pane);min-height:100vh}
+.sheet{min-width:0;padding:0 var(--pad) 56px}
 
-main{max-width:1280px;margin:0 auto;padding:24px 24px 64px}
-.lede{margin:0 0 18px;color:var(--ink-2);max-width:72ch;font-size:15px}
+/* ---------- masthead */
+.bar{height:64px;display:flex;align-items:center;gap:14px}
+.mark{display:flex;align-items:center;gap:9px;font-size:17px;font-weight:750;letter-spacing:-.01em;white-space:nowrap}
+.mark svg{width:22px;height:22px;color:var(--red)}
+.bar .for{color:var(--ink-2);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* ---------- toolbar */
-.toolbar{display:flex;align-items:flex-end;gap:12px;background:var(--sheet);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
-.field{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--ink-3)}
-.field select,.field input{height:38px;border:1px solid var(--line);border-radius:7px;background:var(--sheet);padding:0 10px;font-size:14.5px;font-weight:400;color:var(--ink)}
-.field select{width:15rem;padding-right:28px}
-.field input[name=city]{width:11rem}
-.field input[name=state]{width:4.25rem;text-transform:uppercase}
-.btn{height:38px;padding:0 16px;border-radius:7px;font-weight:600;font-size:14.5px;cursor:pointer;border:1px solid var(--line);background:var(--sheet);white-space:nowrap}
-.btn:hover{border-color:var(--ink-3)}
-.btn.primary{margin-left:auto;background:var(--ink);border-color:var(--ink);color:#fff;min-width:11.5rem}
-.btn.primary:hover{background:#1b3f44}
-.btn:disabled{opacity:.45;cursor:not-allowed}
+/* ---------- summary: every line has a fixed height, so results never push the list */
+.sum{padding:20px 0 26px}
+.sum h1{margin:0;height:48px;font-size:clamp(27px,2.75vw,40px);line-height:48px;font-weight:700;letter-spacing:-.022em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sum .sub{margin:2px 0 0;height:24px;line-height:24px;font-size:16px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tape{display:flex;align-items:center;gap:28px;height:20px;margin-top:20px}
+.strip{flex:1;display:flex;gap:3px;height:14px;max-width:560px;min-width:0}
+.cb{flex:1;min-width:0;height:14px;padding:0;border:0;border-radius:3px;background:var(--rule);transition:background .3s,transform .15s var(--ease)}
+.cb:hover{transform:scaleY(1.45)}
+.cb.sel{box-shadow:0 0 0 2px var(--paper),0 0 0 3.5px var(--ink)}
+.cb.busy{background:var(--ink-2);animation:pulse 1s ease-in-out infinite}
+.cb.update_needed{background:var(--red)} .cb.confirmed{background:var(--green)} .cb.unverified{background:#98a2b6}
+.stats{margin:0 0 0 auto;display:flex;gap:22px;font-size:14px;line-height:20px;color:var(--ink-2);white-space:nowrap}
+.stats div{display:flex;gap:6px}
+.stats dt{order:2} .stats dd{margin:0;min-width:3.4em;text-align:right;font-weight:700;color:var(--ink)}
 
-/* ---------- summary (always rendered, fixed height: nothing below it moves) */
-.summary{display:grid;grid-template-columns:minmax(0,1fr) 330px 300px;gap:32px;align-items:center;height:96px;margin-top:16px;padding:0 20px;background:var(--sheet);border:1px solid var(--line);border-radius:var(--radius)}
-.summary>div{min-width:0}
-.summary h2{margin:0;font-size:21px;line-height:28px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.summary h2 .n{color:var(--upd)}
-.summary p{margin:2px 0 0;font-size:13.5px;line-height:20px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.seg{height:8px;border-radius:4px;background:var(--line-2)}
-.legend{display:flex;gap:14px;margin-top:10px;font-size:13px;line-height:18px;color:var(--ink-2);white-space:nowrap}
-.legend b{display:inline-block;min-width:1.4em;font-weight:650}
-.legend span{display:flex;align-items:center;gap:6px}
-.legend span:before{content:"";width:8px;height:8px;border-radius:2px;background:var(--c)}
-.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.metric b{display:block;font-size:19px;line-height:26px;font-weight:650}
-.metric span{font-size:12.5px;color:var(--ink-3)}
+/* ---------- the question, written as a sentence */
+.ask{display:flex;align-items:center;gap:10px;height:44px}
+.ask .w{color:var(--ink-2);font-size:17px}
+.ask select,.ask input{height:40px;border:0;border-bottom:1.5px solid var(--ink);border-radius:0;background:none;padding:0 2px;font-size:17px;font-weight:650;outline-offset:3px}
+.ask label:first-child{flex:0 4 272px;min-width:0}
+.ask label:nth-of-type(2){flex:0 1 150px;min-width:128px}
+.ask select{width:100%;appearance:none;-webkit-appearance:none;padding-right:22px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath d='M2 4.5l4 4 4-4' fill='none' stroke='%2314213d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 4px center}
+.ask input[name=city]{width:100%}
+.ask input[name=state]{width:42px;text-transform:uppercase}
+.ask select:hover,.ask input:hover{border-color:var(--blue)}
+.btn{height:40px;padding:0 16px;border-radius:8px;border:1.5px solid var(--rule);background:var(--paper);font-size:15px;font-weight:650;white-space:nowrap;transition:background .15s,border-color .15s,transform .1s}
+.btn:hover{border-color:var(--ink)}
+.btn:active{transform:translateY(1px)}
+.btn.go{margin-left:auto;flex:none;min-width:196px;background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.go:hover{background:#22386a;border-color:#22386a}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
 
-/* ---------- filters */
-.filters{display:flex;gap:4px;margin:18px 0 10px;height:34px}
-.tab{white-space:nowrap;flex:none;height:34px;padding:0 12px;border-radius:7px;border:0;background:none;font-size:14px;font-weight:550;color:var(--ink-2);cursor:pointer;display:flex;align-items:center;gap:7px}
-.tab .c{width:2.4em;padding:0;height:20px;line-height:20px;border-radius:10px;background:var(--line-2);font-size:12px;font-weight:600;text-align:center}
-.tab:hover{background:var(--line-2)}
-.tab[aria-selected=true]{background:var(--sheet);box-shadow:0 0 0 1px var(--line);color:var(--ink)}
-.tab:disabled{opacity:.5;cursor:default}
+/* ---------- filters and column heads */
+.tabs{display:flex;gap:26px;height:44px;margin-top:22px;border-bottom:1.5px solid var(--ink)}
+.tab{position:relative;flex:none;display:flex;align-items:center;gap:8px;padding:0;border:0;background:none;font-size:15px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.tab i{width:9px;height:9px;border-radius:2px;background:var(--c)}
+.tab b{display:inline-block;min-width:1.3em;font-weight:700}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected=true]{color:var(--ink)}
+.tab[aria-selected=true]:after{content:"";position:absolute;left:0;right:0;bottom:-1.5px;height:4px;background:var(--ink)}
+.cols{display:grid;grid-template-columns:minmax(0,25fr) minmax(0,29fr) minmax(0,29fr) minmax(0,17fr);column-gap:24px}
+.thead{position:sticky;top:0;z-index:2;height:36px;align-items:center;background:var(--paper);border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
 
-/* ---------- table: fixed columns, fixed row height */
-.table{background:var(--sheet);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
-.cols{display:grid;grid-template-columns:24% 27% 29% 20%}
-.thead{height:40px;align-items:center;padding:0 8px;border-bottom:1px solid var(--line);background:var(--sheet-2);font-size:12.5px;font-weight:600;color:var(--ink-3)}
-.thead span{padding:0 12px}
-.row{width:100%;height:var(--row);padding:0 8px;align-items:center;border:0;border-bottom:1px solid var(--line-2);background:var(--sheet);text-align:left;cursor:pointer;position:relative}
-.row:last-child{border-bottom:0}
-.row:hover{background:var(--sheet-2)}
-.row[aria-current=true]{background:#edf4f2}
-.row:before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 2px 2px 0;background:transparent}
-.row.update_needed:before{background:var(--upd)} .row.confirmed:before{background:var(--ok)}
-.cell{padding:0 12px;min-width:0}
-.l1,.l2{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.l1{font-size:14.5px;line-height:21px;font-weight:500}
-.l2{font-size:13px;line-height:19px;color:var(--ink-3);margin-top:3px}
-.who .l1{font-weight:650}
-.stale{color:var(--del);text-decoration:line-through;text-decoration-thickness:1.5px;text-decoration-color:rgba(163,38,31,.6)}
-.new{color:var(--ins);font-weight:600}
-.new mark{background:var(--ins-bg);color:inherit;padding:1px 4px;border-radius:3px}
-.dim{color:var(--ink-3)}
-.okt{color:var(--ok)}
-
-.pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:12px;font-size:12.5px;font-weight:650;white-space:nowrap}
-.pill:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
-.pill.confirmed{color:var(--ok);background:var(--ok-bg)}
-.pill.update_needed{color:var(--upd);background:var(--upd-bg)}
-.pill.unverified{color:var(--unk);background:var(--unk-bg)}
-.pill.waiting{color:var(--ink-3);background:transparent;padding:0;font-weight:500}
-.pill.waiting:before{background:var(--line)}
-.pill.checking{color:var(--ink-2);background:var(--line-2)}
-.pill.checking:before{animation:blink 1s ease-in-out infinite}
-.pill.error{color:var(--del);background:var(--del-bg)}
-.status .l2{color:var(--del);font-weight:600}
-.chev{position:absolute;right:16px;top:50%;margin-top:-8px;color:var(--ink-3);opacity:0}
-.row:hover .chev,.row:focus-visible .chev{opacity:1}
-
-.sk{display:block;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--line-2) 0%,#f4f7f6 50%,var(--line-2) 100%);background-size:200% 100%;animation:shim 1.3s linear infinite}
-.sk{margin:5px 0}
-.sk+.sk{margin-top:14px}
+/* ---------- the directory: fixed-height entries, marked up in place */
+#rows{min-height:calc(var(--row)*12)}
+.row{position:relative;width:100%;height:var(--row);align-items:center;padding:0;border:0;border-bottom:1px solid var(--rule);background:none;text-align:left}
+.row:before{content:"";position:absolute;inset:0 calc(var(--pad)*-1);background:var(--tint);opacity:0;transition:opacity .12s}
+.row:hover:before{opacity:.6}
+.row[aria-current=true]:before{opacity:1}
+/* the selected entry is held by the evidence pane */
+.row[aria-current=true]:after{content:"";position:absolute;right:calc(var(--pad)*-1);top:50%;margin-top:-10px;border:10px solid transparent;border-right-color:var(--night);border-left:0}
+.row:focus-visible{outline-offset:-2px}
+.cell{position:relative;min-width:0}
+.l1,.l2{display:block;height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.l1{font-size:15.5px}
+.l2{margin-top:3px;font-size:14px;color:var(--ink-2)}
+.who .l1{font-size:16px;font-weight:700;letter-spacing:-.005em}
+.mute{color:var(--ink-2)}
+.ok{color:var(--green)}
+/* red pencil: the strike is drawn, not a text-decoration, so it can be animated once */
+.stale{color:var(--red);background:linear-gradient(currentColor,currentColor) no-repeat 0 54%/100% 1.5px}
+/* blue pencil: the correction, with the changed parts highlighted */
+.ins{color:var(--blue);font-weight:600}
+.ins svg{width:11px;height:11px;margin-right:5px;vertical-align:-1px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ins b{font-weight:750;background:var(--blue-bg);border-radius:3px;padding:1px 2px;margin:0 -1px}
+.fresh .stale{animation:strike .55s var(--ease) both}
+.fresh .ins{animation:write .45s .4s var(--ease) both}
+.fresh .res{animation:write .35s var(--ease) both}
+@keyframes strike{from{background-size:0 1.5px}}
+@keyframes write{from{opacity:0;clip-path:inset(0 100% 0 0)}to{opacity:1;clip-path:inset(0 0 0 0)}}
+@keyframes pulse{50%{opacity:.35}}
+@keyframes spin{to{transform:rotate(360deg)}}
 @keyframes shim{to{background-position:-200% 0}}
-@keyframes blink{50%{opacity:.25}}
 
-.empty{display:flex;flex-direction:column;justify-content:center;gap:6px;height:calc(var(--row) * 6);padding:0 32px;color:var(--ink-2)}
-.empty b{color:var(--ink);font-size:16px}
-.empty.err b{color:var(--del)}
-.foot{margin:14px 2px 0;color:var(--ink-3);font-size:13px;max-width:90ch}
+.res{display:flex;align-items:center;gap:7px;height:22px;font-size:15px;font-weight:700;white-space:nowrap}
+.res.confirmed{color:var(--green)} .res.update_needed,.res.error{color:var(--red)} .res.unverified{color:var(--grey)}
+.res.idle{color:var(--ink-2);font-weight:500}
+.res .spin{animation:spin .8s linear infinite}
+.sk{display:block;height:10px;margin:6px 0;border-radius:5px;background:linear-gradient(90deg,var(--rule-2) 0%,#f9fafc 50%,var(--rule-2) 100%);background-size:200% 100%;animation:shim 1.3s linear infinite}
+.sk+.sk{margin-top:15px}
+.blank{display:flex;flex-direction:column;justify-content:center;gap:6px;height:calc(var(--row)*4);max-width:60ch;color:var(--ink-2)}
+.blank b{color:var(--ink);font-size:18px}
+.blank.err b{color:var(--red)}
+.foot{margin:18px 0 0;max-width:78ch;color:var(--ink-2);font-size:14px}
 
-/* ---------- drawer (overlay: opening it never moves the page) */
-.scrim{position:fixed;inset:0;background:rgba(15,42,46,.28);opacity:0;pointer-events:none;transition:opacity .2s}
-.scrim.on{opacity:1;pointer-events:auto}
-.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--sheet);box-shadow:-12px 0 32px rgba(15,42,46,.14);transform:translateX(100%);transition:transform .25s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;visibility:hidden}
-.drawer.on{transform:none;visibility:visible}
-.dh{padding:20px 24px 16px;border-bottom:1px solid var(--line-2)}
-.dh .top-line{display:flex;align-items:flex-start;gap:12px}
-.dh h3{margin:0;font-size:20px;line-height:26px;font-weight:700;letter-spacing:-.01em}
-.dh .sub{margin:2px 0 0;color:var(--ink-3);font-size:13.5px}
-.x{margin-left:auto;width:32px;height:32px;border-radius:7px;border:0;background:none;cursor:pointer;color:var(--ink-2);flex:none}
-.x:hover{background:var(--line-2)}
-.dh .verdict{display:flex;align-items:center;gap:10px;margin-top:14px}
-.dh .verdict .conf{font-size:13px;color:var(--ink-3)}
-.db{flex:1;overflow:auto;padding:18px 24px 24px}
-.db .sum{margin:0 0 18px;font-size:15px;line-height:1.55}
-.cmp{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}
-.cmp th{text-align:left;font-size:12.5px;font-weight:600;color:var(--ink-3);padding:0 10px 8px 0;border-bottom:1px solid var(--line)}
-.cmp td{vertical-align:top;padding:10px 10px 10px 0;border-bottom:1px solid var(--line-2);overflow-wrap:anywhere}
-.cmp td:first-child{font-weight:600;width:24%}
-.cmp .stale{display:inline}
-.cite{border:0;background:none;padding:0 2px;margin-left:2px;font-size:11.5px;font-weight:700;color:var(--link);cursor:pointer;vertical-align:super;line-height:1}
-.cite:hover{text-decoration:underline}
-.h4{margin:22px 0 10px;font-size:13px;font-weight:650;color:var(--ink-2)}
-.src{display:block;border:1px solid var(--line-2);border-radius:8px;padding:10px 12px;margin-bottom:8px;transition:background .5s,border-color .5s}
-.src.cited{border-color:var(--line)}
-.src.flash{background:#fff6d6;border-color:#e2c25c}
-.src a{color:var(--ink);font-weight:600;font-size:14px;text-decoration:none}
-.src a:hover{text-decoration:underline}
-.src .m{font-size:12.5px;color:var(--ink-3);margin:2px 0 4px}
-.src .m b{color:var(--link);font-weight:700;margin-right:6px}
-.src p{margin:0;font-size:13.5px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.df{display:flex;gap:8px;padding:12px 24px;border-top:1px solid var(--line-2);background:var(--sheet-2)}
-.df .btn{height:34px;font-size:13.5px}
-.df .pos{margin-left:auto;align-self:center;font-size:13px;color:var(--ink-3)}
+/* ---------- evidence pane: the web side, always in the same place */
+.pane{position:sticky;top:0;height:100vh;height:100dvh;display:flex;flex-direction:column;background:var(--night);color:var(--snow);min-width:0}
+.ph{display:flex;align-items:flex-start;gap:12px;height:104px;padding:26px 32px 0;flex:none}
+.ph>div{min-width:0}
+.ph h2{margin:0;height:32px;font-size:25px;line-height:32px;font-weight:700;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ph p{margin:2px 0 0;height:22px;color:var(--snow-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.x{display:none;margin-left:auto;width:36px;height:36px;border:0;border-radius:8px;background:var(--night-2);color:var(--snow);flex:none;align-items:center;justify-content:center}
+.pb{flex:1;overflow:auto;padding:0 32px 28px;scrollbar-color:var(--night-line) transparent;overscroll-behavior:contain}
+.pane :focus-visible{outline-color:var(--n-blue)}
+.verdict{display:flex;align-items:center;gap:8px;height:28px;font-size:17px;font-weight:700}
+.verdict .conf{margin-left:auto;font-size:14px;font-weight:500;color:var(--snow-2)}
+.verdict.confirmed{color:var(--n-green)} .verdict.update_needed,.verdict.error{color:var(--n-red)} .verdict.unverified,.verdict.idle{color:var(--snow-2)}
+.verdict .spin{animation:spin .8s linear infinite}
+.say{margin:10px 0 0;font-size:18px;line-height:27px;max-width:46ch;text-wrap:pretty}
+.redline{margin-top:24px;border-top:1px solid var(--night-line)}
+.f{padding:14px 0;border-bottom:1px solid var(--night-line)}
+.fl{display:flex;align-items:center;gap:6px;font-size:13.5px;line-height:20px;color:var(--snow-2)}
+.fv{margin-top:3px;font-size:16px;line-height:24px;overflow-wrap:anywhere}
+.fv.old{color:var(--n-red);text-decoration:line-through;text-decoration-thickness:1.5px}
+.fv.new{color:var(--n-blue);font-weight:600}
+.fv.new svg{width:11px;height:11px;margin-right:6px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fv.new b{font-weight:750;background:rgba(157,188,255,.2);border-radius:3px;padding:1px 2px;margin:0 -1px}
+.fn{margin-top:2px;font-size:14px;color:var(--snow-2)}
+.fn.ok{color:var(--n-green)} .fn.bad{color:var(--n-red)}
+.two{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}
+.cite{margin-left:2px;height:20px;padding:0 6px;border:0;border-radius:4px;background:var(--night-2);color:var(--n-blue);font-size:12.5px;font-weight:700}
+.fl .cite:first-of-type{margin-left:auto}
+.fc{display:flex;flex-wrap:wrap;gap:4px;min-height:20px;margin-top:8px}
+.fc .cite{margin:0}
+.cite:hover{background:var(--n-blue);color:var(--night)}
 
-/* ---------- small screens */
-@media (max-width:980px){
-  .summary{grid-template-columns:minmax(0,1fr);grid-template-rows:48px 28px 44px;height:auto;padding:16px 18px;gap:14px}
-  .summary h2{font-size:18px}
-  .legend{gap:12px;font-size:12.5px}
-  .ctx{display:none}
+.eh{display:flex;align-items:baseline;gap:10px;margin:28px 0 10px}
+.eh h3{margin:0;font-size:17px;font-weight:700}
+.eh span{color:var(--snow-2);font-size:14px}
+.mix{display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden}
+.mix i{flex:var(--n);background:var(--c)}
+.grp{display:flex;align-items:center;gap:8px;margin:20px 0 4px;font-size:14px;font-weight:650}
+.grp i{width:9px;height:9px;border-radius:2px;background:var(--c)}
+.grp span{font-weight:400;color:var(--snow-2)}
+.src{display:grid;grid-template-columns:30px minmax(0,1fr);padding:11px 10px;margin:0 -10px;border-radius:8px;color:inherit;text-decoration:none;transition:background .4s}
+.src:hover{background:var(--night-2)}
+.src.flash{background:#2f4a86}
+.src .id{font-size:12.5px;font-weight:700;line-height:22px;color:var(--snow-2)}
+.src.cited .id{color:var(--n-blue)}
+.src b{display:block;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src .m{display:block;font-size:13.5px;line-height:20px;color:var(--snow-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src .t{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:3px;font-size:14px;line-height:20px;color:#c9d2e6}
+.src.off{opacity:.55}
+.steps{margin:22px 0 0;padding:0;list-style:none;counter-reset:s;max-width:44ch}
+.steps li{position:relative;padding:0 0 16px 34px;counter-increment:s;color:#c9d2e6}
+.steps li:before{content:counter(s);position:absolute;left:0;top:0;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--night-line);text-align:center;font-size:12.5px;line-height:19px;font-weight:700;color:var(--snow-2)}
+.steps b{color:var(--snow);font-weight:650}
+.pbtn{margin-top:20px;height:40px;padding:0 16px;border-radius:8px;border:0;background:var(--snow);color:var(--night);font-size:15px;font-weight:700}
+.pbtn:hover{background:#fff}
+.pbtn:disabled{opacity:.4;cursor:not-allowed}
+.nsk{display:block;height:10px;margin:12px 0;border-radius:5px;background:linear-gradient(90deg,var(--night-2) 0%,#25386a 50%,var(--night-2) 100%);background-size:200% 100%;animation:shim 1.3s linear infinite}
+.pf{display:flex;align-items:center;gap:8px;height:56px;padding:0 32px;border-top:1px solid var(--night-line);color:var(--snow-2);font-size:13.5px;flex:none}
+.pf .keys{display:flex;align-items:center;gap:6px;white-space:nowrap}
+kbd{display:inline-block;min-width:22px;height:22px;padding:0 5px;border-radius:5px;border:1px solid var(--night-line);font:inherit;font-size:12.5px;line-height:20px;text-align:center;color:var(--snow)}
+.pf .pos{margin-left:auto;white-space:nowrap}
+.nav{width:34px;height:34px;border:0;border-radius:8px;background:var(--night-2);color:var(--snow);display:flex;align-items:center;justify-content:center}
+.nav:hover{background:#27407a}
+.nav:disabled{opacity:.35;cursor:default}
+.scrim{display:none}
+
+/* filtering animates through the View Transitions API where the browser has it */
+::view-transition-group(*){animation-duration:.28s;animation-timing-function:var(--ease)}
+::view-transition-old(root),::view-transition-new(root){animation:none}
+
+/* ---------- narrower: the pane becomes a sheet that slides over the list */
+@media (max-width:1040px){
+  :root{--pad:24px}
+  .app{display:block}
+  .pane{position:fixed;inset:auto 0 0 0;z-index:10;height:88dvh;border-radius:18px 18px 0 0;transform:translateY(100%);visibility:hidden;transition:transform .32s var(--ease),visibility 0s .32s}
+  .pane.on{transform:none;visibility:visible;transition:transform .32s var(--ease)}
+  .scrim{display:block;position:fixed;inset:0;z-index:9;background:rgba(20,33,61,.45);opacity:0;pointer-events:none;transition:opacity .25s}
+  .scrim.on{opacity:1;pointer-events:auto}
+  .x{display:flex}.pf .keys{display:none}
+  .ph{padding:24px 24px 0}.pb{padding:0 24px 24px}.pf{padding:0 24px}
+  .row[aria-current=true]:after{display:none}
 }
 @media (max-width:760px){
-  main{padding:16px 16px 48px}
-  .top .in{padding:0 16px}.top .credit{display:none}
-  .toolbar{flex-wrap:wrap}.field{flex:1 1 40%}.field select,.field input[name=city]{width:100%}
-  .btn.primary{margin-left:0;flex:1 1 100%}
-  .filters{overflow-x:auto;scrollbar-width:none}
+  :root{--pad:16px;--row:190px}
+  .bar .for{display:none}
+  .sum{padding:8px 0 22px}
+  .sum h1{height:64px;font-size:26px;line-height:32px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .sum .sub{height:44px;font-size:15px;line-height:22px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .tape{display:block;height:74px;margin-top:16px}
+  .strip{max-width:none}
+  /* three equal columns, value over label: a number changing width moves nothing */
+  .stats{margin:16px 0 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;font-size:13.5px}
+  .stats div{display:block}
+  .stats dd{min-width:0;text-align:left;font-size:16px;line-height:22px}
+  .stats dt{line-height:20px;overflow:hidden;text-overflow:ellipsis}
+  .ask{flex-wrap:wrap;height:136px;align-content:space-between}
+  .ask label:first-child{flex:1 1 calc(100% - 40px)}
+  .ask label:nth-of-type(2){flex:1 1 60%}
+  .btn.go{margin:0;flex:1;min-width:0}
+  .tabs{gap:16px;overflow-x:auto;scrollbar-width:none;margin-right:calc(var(--pad)*-1);padding-right:var(--pad)}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{font-size:14px;gap:6px}
   .thead{display:none}
-  .cols{grid-template-columns:1fr auto}
-  .row{height:156px;padding:12px 6px;grid-template-areas:"who status" "dir dir" "web web";row-gap:8px}
-  .who{grid-area:who}.dir{grid-area:dir}.web{grid-area:web}.status{grid-area:status;text-align:right}
-  .status .l2{display:none}.chev{display:none}
+  .cols{grid-template-columns:minmax(0,1fr) auto;column-gap:12px}
+  .row{grid-template-areas:"who res" "dir dir" "web web";align-content:center;row-gap:10px}
+  .who{grid-area:who}.dir{grid-area:dir}.web{grid-area:web}.end{grid-area:res;align-self:start}
+  .end .l2{display:none}
+  #rows{min-height:calc(var(--row)*6)}
 }
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (prefers-reduced-motion:reduce){*,::view-transition-group(*){animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<header class="top"><div class="in">
-  <div class="mark">
-    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="5" fill="none" stroke="#7fd1b3" stroke-width="1.6"/><path d="M6 11.5l3.2 3L16 7.5" fill="none" stroke="#7fd1b3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    Directory Check
-  </div>
-  <span class="ctx">Prototype for Elevance Health network operations</span>
-  <span class="credit">Listings from the CMS NPI Registry, evidence from Exa</span>
-</div></header>
+<div class="app">
+<main class="sheet">
+  <header class="bar">
+    <div class="mark">
+      <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 7.5h17"/><path d="M6.5 18l4.5-5.5 4.5 5.5"/></svg>
+      Directory Check
+    </div>
+    <span class="for">Prototype for Elevance Health network operations</span>
+  </header>
 
-<main>
-  <p class="lede">Checks each provider listing against what the provider's own pages say today, and routes only the wrong ones to outreach, with the evidence attached.</p>
+  <section class="sum" aria-live="polite">
+    <h1 id="headline">Loading the directory</h1>
+    <p class="sub" id="sub">Reading the CMS NPI Registry.</p>
+    <div class="tape">
+      <div class="strip" id="strip" role="group" aria-label="One mark per listing"></div>
+      <dl class="stats">
+        <div><dt>elapsed</dt><dd id="mT">–</dd></div>
+        <div><dt>Exa search cost</dt><dd id="mC">–</dd></div>
+        <div><dt>per listing</dt><dd id="mP">–</dd></div>
+      </dl>
+    </div>
+  </section>
 
-  <form class="toolbar" id="load">
-    <label class="field">Specialty
+  <form class="ask" id="load">
+    <label><span class="vh">Specialty</span>
       <select name="specialty">
         <option>Psychiatry</option>
         <option>Child &amp; Adolescent Psychiatry</option>
         <option>Neurology</option>
         <option>Family Medicine</option>
-      </select>
-    </label>
-    <label class="field">City<input name="city" value="Indianapolis" required autocomplete="off"></label>
-    <label class="field">State<input name="state" value="IN" maxlength="2" required autocomplete="off"></label>
+      </select></label>
+    <span class="w">in</span>
+    <label><span class="vh">City</span><input name="city" value="Indianapolis" required autocomplete="off" spellcheck="false"></label>
+    <label><span class="vh">State</span><input name="state" value="IN" maxlength="2" required autocomplete="off" spellcheck="false"></label>
     <button class="btn" id="loadBtn">Load listings</button>
-    <button type="button" class="btn primary" id="checkBtn" disabled>Check all listings</button>
+    <button type="button" class="btn go" id="checkBtn" disabled>Check all listings</button>
   </form>
 
-  <section class="summary" aria-live="polite">
-    <div><h2 id="headline">No listings loaded</h2><p id="sub">Load a specialty and city to start a check.</p></div>
-    <div>
-      <div class="seg" id="seg" aria-hidden="true"></div>
-      <div class="legend"><span style="--c:var(--upd)">Needs update <b id="lgU">0</b></span><span style="--c:var(--ok)">Confirmed <b id="lgO">0</b></span><span style="--c:#9aa7a9">Unverified <b id="lgN">0</b></span></div>
-    </div>
-    <div class="metrics">
-      <div class="metric"><b id="mT">–</b><span>Elapsed</span></div>
-      <div class="metric"><b id="mC">–</b><span>Exa search cost</span></div>
-      <div class="metric"><b id="mP">–</b><span>Per listing</span></div>
-    </div>
-  </section>
-
-  <div class="filters" role="tablist" aria-label="Filter listings">
-    <button class="tab" role="tab" aria-selected="true" data-f="all">All <span class="c" id="fA">0</span></button>
-    <button class="tab" role="tab" aria-selected="false" data-f="update_needed">Needs update <span class="c" id="fU">0</span></button>
-    <button class="tab" role="tab" aria-selected="false" data-f="confirmed">Confirmed <span class="c" id="fO">0</span></button>
-    <button class="tab" role="tab" aria-selected="false" data-f="unverified">Unverified <span class="c" id="fN">0</span></button>
+  <div class="tabs" role="tablist" aria-label="Filter listings">
+    <button class="tab" role="tab" aria-selected="true" data-f="all">All <b id="fA">0</b></button>
+    <button class="tab" role="tab" aria-selected="false" data-f="update_needed" style="--c:var(--red)"><i></i>Needs update <b id="fU">0</b></button>
+    <button class="tab" role="tab" aria-selected="false" data-f="confirmed" style="--c:var(--green)"><i></i>Confirmed <b id="fO">0</b></button>
+    <button class="tab" role="tab" aria-selected="false" data-f="unverified" style="--c:#98a2b6"><i></i>Unverified <b id="fN">0</b></button>
   </div>
-
-  <section class="table" aria-label="Listings">
-    <div class="cols thead" aria-hidden="true"><span>Provider</span><span>In the directory</span><span>What the web says</span><span>Result</span></div>
-    <div id="rows"><div class="empty"><b>Load listings to begin.</b><span>They come from the federal NPI registry, the self-reported data many plan directories are built on.</span></div></div>
-  </section>
-  <p class="foot">Results are leads for an analyst, not automatic edits. Sites that only republish the NPI registry are excluded from the search, since they would repeat the listing back.</p>
+  <div class="cols thead" aria-hidden="true"><span>Provider</span><span>In the directory</span><span>On the web today</span><span>Result</span></div>
+  <div id="rows"></div>
+  <p class="foot">Results are leads for an analyst, not automatic edits. Sites that only republish the NPI registry are left out of every search, because they would repeat the listing back as if it were proof. Listings come from the CMS NPI Registry; evidence comes from Exa.</p>
 </main>
 
 <div class="scrim" id="scrim"></div>
-<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle" tabindex="-1">
-  <div class="dh">
-    <div class="top-line"><div><h3 id="dTitle"></h3><p class="sub" id="dSub"></p></div>
-      <button class="x" id="dClose" aria-label="Close details"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9m0-9l-9 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
-    <div class="verdict" id="dVerdict"></div>
+<aside class="pane" id="pane" aria-labelledby="pTitle" tabindex="-1">
+  <div class="ph">
+    <div><h2 id="pTitle">How a check works</h2><p id="pSub">One listing at a time</p></div>
+    <button class="x" id="pClose" aria-label="Close evidence"><svg class="g" viewBox="0 0 16 16"><path d="M3.5 3.5l9 9m0-9l-9 9"/></svg></button>
   </div>
-  <div class="db" id="dBody"></div>
-  <div class="df"><button class="btn" id="dPrev">Previous</button><button class="btn" id="dNext">Next</button><span class="pos" id="dPos"></span></div>
+  <div class="pb" id="pBody"></div>
+  <div class="pf">
+    <button class="nav" id="pPrev" aria-label="Previous listing"><svg class="g" viewBox="0 0 16 16"><path d="M4 10l4-4 4 4"/></svg></button>
+    <button class="nav" id="pNext" aria-label="Next listing"><svg class="g" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg></button>
+    <span class="keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>C</kbd> check</span>
+    <span class="pos" id="pPos"></span>
+  </div>
 </aside>
+</div>
 
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const LABEL = {confirmed: "Confirmed", update_needed: "Needs update", unverified: "Unverified"};
 const STATUS = {active: "Active", moved: "Moved", retired: "Retired", left_practice: "Left the practice", deceased: "Deceased", unknown: "Unknown"};
-const NEWPT = {yes: "Yes", no: "No", unknown: "Unknown"};
-let listings = [], st = [], filter = "all", open = -1, started = 0, timer = 0, lastFocus = null;
+const NEWPT = {yes: "Accepting", no: "Not accepting", unknown: "Unknown"};
+const KINDS = [
+  ["first_party", "Their own and health system pages", "var(--n-green)"],
+  ["professional", "Professional profiles", "var(--n-blue)"],
+  ["aggregator", "Aggregators and listing sites", "var(--n-amber)"],
+  ["other", "Other pages", "#8493b3"],
+  ["different_person", "About a different person", "#4d5f88"],
+];
+const G = {
+  confirmed: `<svg class="g" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.6l3.2 3.2L13 4.8"/></svg>`,
+  update_needed: `<svg class="g" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h11M4.6 13.2L8 9l3.4 4.2"/></svg>`,
+  unverified: `<svg class="g" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.7 6.1a2.3 2.3 0 1 1 3.5 2c-.8.5-1.2 1-1.2 1.9M8 12.8v.1"/></svg>`,
+  error: `<svg class="g" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v6M8 12.6v.1"/></svg>`,
+  spin: `<svg class="g spin" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2a5.8 5.8 0 1 1-5.8 5.8"/></svg>`,
+  caret: `<svg viewBox="0 0 11 11" aria-hidden="true"><path d="M1.5 9.5L5.5 3l4 6.5"/></svg>`,
+};
+const wide = matchMedia("(min-width: 1041px)");
+const calm = matchMedia("(prefers-reduced-motion: reduce)");
+let listings = [], st = [], filter = "all", sel = -1, running = false, started = 0, elapsed = null, timer = 0, lastFocus = null, place = "";
 
-/* ---------------- loading listings */
-$("#load").onsubmit = async e => {
-  e.preventDefault();
-  const q = new URLSearchParams(new FormData(e.target));
+const busy = s => s.phase === "search" || s.phase === "read";
+const outcome = s => s.phase === "done" ? (s.check?.result || "unverified") : s.phase === "error" ? "unverified" : null;
+const fullAddr = l => `${l.address}, ${l.city}, ${l.state} ${l.zip}`;
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+/* ---------------- loading the directory */
+$("#load").onsubmit = e => { e.preventDefault(); load(); };
+
+async function load() {
+  const q = new URLSearchParams(new FormData($("#load")));
+  place = `${q.get("specialty")} in ${q.get("city")}, ${q.get("state").toUpperCase()}`;
   $("#loadBtn").disabled = $("#checkBtn").disabled = true;
-  listings = []; st = [];
-  $("#rows").innerHTML = Array.from({length: 8}, skeletonRow).join("");
-  setSummary("Loading listings…", "Reading the NPI registry.");
+  listings = []; st = []; sel = -1; elapsed = null;
+  $("#rows").innerHTML = Array.from({length: 12}, skeletonRow).join("");
+  $("#strip").innerHTML = "";
+  say("Loading the directory", "Reading the CMS NPI Registry.");
+  renderPane();
   try {
-    const r = await fetch("/api/listings?" + q); const j = await r.json();
+    const r = await fetch("/api/listings?" + q), j = await r.json();
     if (!r.ok) throw new Error(j.detail || r.statusText);
     listings = j.listings; st = listings.map(() => ({phase: "waiting"}));
     if (!listings.length) {
-      $("#rows").innerHTML = `<div class="empty"><b>No listings found.</b><span>Try a larger city or another specialty.</span></div>`;
-      setSummary("No listings found", "Nothing matched that specialty and place.");
+      $("#rows").innerHTML = `<div class="blank"><b>No listings for ${esc(place)}.</b><span>The registry has no one with that primary specialty there. Try a larger city or another specialty.</span></div>`;
     } else {
-      $("#rows").innerHTML = listings.map((_, i) => `<button type="button" class="row cols" id="r${i}" data-i="${i}"></button>`).join("");
+      $("#rows").innerHTML = listings.map((_, i) => `<button type="button" class="row cols" id="r${i}" data-i="${i}" style="view-transition-name:row-${i}"></button>`).join("");
+      $("#strip").innerHTML = listings.map((l, i) => `<button type="button" class="cb" id="c${i}" data-i="${i}" title="${esc(l.name)}" aria-label="${esc(l.name)}"></button>`).join("");
       listings.forEach((_, i) => paint(i));
-      setSummary(`${listings.length} listings ready to check`, `${q.get("specialty")} in ${q.get("city")}, ${q.get("state").toUpperCase()}. Each check runs one Exa search.`);
-      $("#checkBtn").disabled = false;
+      if (wide.matches) select(0, false);
     }
   } catch (err) {
-    $("#rows").innerHTML = `<div class="empty err"><b>Couldn't load listings.</b><span>${esc(err.message)}. Check the city and state, then try again.</span></div>`;
-    setSummary("No listings loaded", "Loading failed.");
-  } finally {
-    $("#loadBtn").disabled = false; tally();
+    $("#rows").innerHTML = `<div class="blank err"><b>The registry didn't answer.</b><span>${esc(err.message)}. Check the city and state, then load again.</span></div>`;
   }
-};
+  $("#loadBtn").disabled = false;
+  $("#checkBtn").textContent = listings.length ? `Check all ${plural(listings.length, "listing")}` : "Check all listings";
+  $("#checkBtn").disabled = !listings.length;
+  tick();
+}
 
 function skeletonRow() {
-  return `<div class="row cols" aria-hidden="true" style="cursor:default">
-    <div class="cell"><span class="sk" style="width:62%"></span><span class="sk" style="width:40%"></span></div>
-    <div class="cell"><span class="sk" style="width:80%"></span><span class="sk" style="width:35%"></span></div>
-    <div class="cell"><span class="sk" style="width:70%"></span><span class="sk" style="width:30%"></span></div>
-    <div class="cell"><span class="sk" style="width:45%"></span></div></div>`;
+  return `<div class="row cols" aria-hidden="true">
+    <div class="cell who"><span class="sk" style="width:64%"></span><span class="sk" style="width:42%"></span></div>
+    <div class="cell dir"><span class="sk" style="width:82%"></span><span class="sk" style="width:36%"></span></div>
+    <div class="cell web"><span class="sk" style="width:30%"></span></div><div class="cell end"></div></div>`;
 }
 
-/* ---------------- one row; its height never changes */
-const fullAddr = l => `${l.address}, ${l.city}, ${l.state} ${l.zip}`;
-
+/* ---------------- one directory entry. Its box never changes size. */
 function paint(i) {
-  const l = listings[i], s = st[i], c = s.check, el = document.getElementById("r" + i);
-  el.className = "row cols " + (c ? c.result : "");
-  const res = c ? c.result : (s.phase === "done" || s.phase === "error") ? "unverified" : null;
+  const l = listings[i], s = st[i], c = s.check, el = document.getElementById("r" + i), res = outcome(s);
+  el.className = "row cols" + (s.fresh ? " fresh" : "");
   el.hidden = filter !== "all" && res !== filter;
-  el.setAttribute("aria-current", open === i);
-  const addrStale = c?.location.status === "differs", phoneStale = c?.phone.status === "differs";
+  el.setAttribute("aria-current", sel === i);
+  const cb = document.getElementById("c" + i);
+  cb.className = "cb " + (busy(s) ? "busy" : res || "") + (sel === i ? " sel" : "");
 
-  let web, status;
-  if (s.phase === "waiting") {
-    web = `<span class="l1 dim">Not checked yet</span><span class="l2">&nbsp;</span>`;
-    status = `<span class="pill waiting">Waiting</span>`;
-  } else if (s.phase === "checking") {
-    web = `<span class="sk" style="width:72%"></span><span class="sk" style="width:38%"></span>`;
-    status = `<span class="pill checking">Searching</span>`;
+  let web, end;
+  if (s.phase === "waiting" || s.phase === "queued") {
+    web = `<span class="l1 mute">${s.phase === "queued" ? "In line" : "Not checked yet"}</span><span class="l2">&nbsp;</span>`;
+    end = "";
+  } else if (s.phase === "search") {
+    web = `<span class="l1">Searching the web</span><span class="l2"><span class="sk" style="width:58%"></span></span>`;
+    end = `<span class="res idle">${G.spin}Checking</span>`;
+  } else if (s.phase === "read") {
+    const d = [...new Set(s.sources.map(x => x.domain))];
+    web = `<span class="l1">Reading ${plural(s.sources.length, "page")}</span><span class="l2">${esc(d.slice(0, 2).join(", "))}${d.length > 2 ? ` and ${d.length - 2} more` : ""}</span>`;
+    end = `<span class="res idle">${G.spin}Checking</span>`;
   } else if (s.phase === "error") {
-    web = `<span class="l1 dim">Check failed</span><span class="l2">${esc(s.error)}</span>`;
-    status = `<span class="pill error">Error</span>`;
+    web = `<span class="l1 mute">The check failed</span><span class="l2">${esc(s.error)}</span>`;
+    end = `<span class="res error">${G.error}Error</span><span class="l2">Check it again</span>`;
   } else if (!c) {
-    web = `<span class="l1 dim">No pages found for this provider</span><span class="l2">&nbsp;</span>`;
-    status = `<span class="pill unverified">Unverified</span>`;
+    web = `<span class="l1 mute">No pages found for this provider</span><span class="l2">&nbsp;</span>`;
+    end = `<span class="res unverified">${G.unverified}Unverified</span><span class="l2">No pages</span>`;
   } else {
-    web = `<span class="l1">${webLine(c.location, "address", c.result)}</span><span class="l2">${webLine(c.phone, "phone", c.result)}</span>`;
-    const note = c.accepting_new_patients === "no" ? "Not accepting new patients"
-      : ["moved", "retired", "left_practice", "deceased"].includes(c.practice_status) ? STATUS[c.practice_status] : "";
-    status = `<span class="pill ${c.result}">${LABEL[c.result]}</span><span class="l2">${note || "&nbsp;"}</span>`;
+    web = `<span class="l1">${webLine(c.location, "address", fullAddr(l), c.result)}</span><span class="l2">${webLine(c.phone, "phone", l.phone, c.result)}</span>`;
+    end = `<span class="res ${c.result}">${G[c.result]}${LABEL[c.result]}</span><span class="l2">${esc(why(s))}</span>`;
   }
+  const aStale = c?.location.status === "differs", pStale = c?.phone.status === "differs";
   el.innerHTML = `
-    <span class="cell who"><span class="l1">${esc(l.name)}${l.credential ? ", " + esc(l.credential) : ""}</span><span class="l2">${esc(l.specialty)}, NPI ${esc(l.npi)}</span></span>
-    <span class="cell dir"><span class="l1 ${addrStale ? "stale" : ""}" title="${esc(fullAddr(l))}">${esc(fullAddr(l))}</span><span class="l2 ${phoneStale ? "stale" : ""}">${esc(l.phone || "No phone listed")}</span></span>
+    <span class="cell who"><span class="l1">${esc(l.name)}${l.credential ? ", " + esc(l.credential) : ""}</span><span class="l2">NPI ${esc(l.npi)}</span></span>
+    <span class="cell dir"><span class="l1" title="${esc(fullAddr(l))}"><span class="${aStale ? "stale" : ""}">${esc(fullAddr(l))}</span></span><span class="l2"><span class="${pStale ? "stale" : ""}">${esc(l.phone || "No phone listed")}</span></span></span>
     <span class="cell web">${web}</span>
-    <span class="cell status">${status}</span>
-    <svg class="chev" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5l4.5 4.5L6 12.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  el.setAttribute("aria-label", `${l.name}: ${c ? LABEL[c.result] : s.phase}. Open details.`);
+    <span class="cell end">${end}</span>`;
+  el.setAttribute("aria-label", `${l.name}: ${res ? LABEL[res] : busy(s) ? "checking" : "not checked"}. Show evidence.`);
+  s.fresh = false;
 }
 
-function webLine(f, what, result) {
-  if (f.status === "differs" && f.web_value) return `<span class="new"><mark>${esc(f.web_value)}</mark></span>`;
-  const W = what === "address" ? "Address" : "Phone";
-  if (f.status === "matches" && result === "confirmed") return `<span class="okt">${W} matches</span>`;
-  if (f.status === "matches") return `<span class="dim">${W} matches aggregator sites only</span>`;
-  return `<span class="dim">No current ${what} found</span>`;
+/* The second line under a result: the reason, in a few words. */
+function why(s) {
+  const c = s.check, k = Object.values(c.source_kinds || {}), n = v => k.filter(x => x === v).length;
+  if (c.accepting_new_patients === "no") return "No new patients";
+  if (["moved", "retired", "left_practice", "deceased"].includes(c.practice_status)) return STATUS[c.practice_status];
+  if (!k.length) return `${plural(s.sources.length, "page")} read`;
+  if (c.result === "unverified") return n("first_party") ? "Evidence too thin" : n("aggregator") ? "Aggregators only" : "No usable pages";
+  return n("first_party") ? plural(n("first_party"), "first-party page") : `${plural(s.sources.length, "page")} read`;
 }
 
-/* ---------------- summary, counts, filters */
-function setSummary(h, p) { $("#headline").innerHTML = h; $("#sub").textContent = p; }
-
-function tally() {
-  const n = r => st.filter(s => s.check?.result === r).length;
-  const u = n("update_needed"), o = n("confirmed"), x = st.filter(s => s.phase === "done" && (!s.check || s.check.result === "unverified")).length + st.filter(s => s.phase === "error").length;
-  const total = listings.length, rest = Math.max(0, total - u - o - x);
-  const pc = v => total ? (v / total * 100).toFixed(2) + "%" : "0%", a = pc(u), b = pc(u + o), c = pc(u + o + x);
-  $("#seg").style.background = `linear-gradient(90deg, var(--upd) 0 ${a}, var(--ok) ${a} ${b}, #9aa7a9 ${b} ${c}, var(--line-2) ${c} 100%)`;
-  $("#lgU").textContent = u; $("#lgO").textContent = o; $("#lgN").textContent = x;
-  $("#fA").textContent = total; $("#fU").textContent = u; $("#fO").textContent = o; $("#fN").textContent = x;
-  return {u, o, x, total, done: u + o + x};
+/* Mark the parts of the web's value that the listing does not have. */
+const norm = t => t.toLowerCase().replace(/[^a-z0-9]/g, "");
+function novel(web, listed, what) {
+  if (what === "phone") {
+    const a = (listed || "").replace(/\D/g, ""), b = web.replace(/\D/g, "");
+    if (a.length !== b.length || ![...b].some((d, k) => d === a[k])) return esc(web);
+    let k = 0;
+    return [...web].map(ch => /\d/.test(ch) ? (b[k] !== a[k++] ? `<b>${ch}</b>` : ch) : esc(ch)).join("").replace(/<\/b><b>/g, "");
+  }
+  const have = new Set((listed || "").split(/\s+/).map(norm)), parts = web.split(/(\s+)/);
+  if (!parts.some(t => norm(t) && have.has(norm(t)))) return esc(web);
+  return parts.map(t => !norm(t) || have.has(norm(t)) ? esc(t) : `<b>${esc(t)}</b>`).join("").replace(/<\/b>(\s+)<b>/g, "$1");
 }
+
+function webLine(f, what, listed, result) {
+  if (f.status === "differs" && f.web_value) return `<span class="ins">${G.caret}${novel(f.web_value, listed, what)}</span>`;
+  if (f.status === "matches" && result === "confirmed") return `<span class="ok">Same ${what}</span>`;
+  if (f.status === "matches") return `<span class="mute">Same ${what} on aggregators</span>`;
+  return `<span class="mute">No current ${what} found</span>`;
+}
+
+/* ---------------- summary line, strip, counts */
+function say(h, p) { $("#headline").textContent = h; $("#sub").textContent = p; }
 
 function tick() {
-  const t = tally(), done = st.filter(s => s.phase === "done");
-  const cost = done.reduce((a, s) => a + (s.exa?.cost || 0), 0);
-  const secs = (performance.now() - started) / 1000;
-  $("#mT").textContent = secs < 60 ? `${secs.toFixed(0)} s` : `${Math.floor(secs / 60)}m ${Math.round(secs % 60)}s`;
-  $("#mC").textContent = `$${cost.toFixed(3)}`;
-  $("#mP").textContent = done.length ? `$${(cost / done.length).toFixed(3)}` : "–";
-  if (t.done < t.total) setSummary(`Checking ${t.total} listings`, `${t.done} of ${t.total} done. Four checks run at a time.`);
-  else setSummary(`<span class="n">${t.u} of ${t.total}</span> listings need an update`, `${t.o} confirmed by current web evidence, ${t.x} unverified. Calls only needed for ${t.u + t.x}.`);
+  const total = listings.length, by = r => st.filter(s => outcome(s) === r).length;
+  const u = by("update_needed"), o = by("confirmed"), x = by("unverified"), done = u + o + x;
+  $("#fA").textContent = total; $("#fU").textContent = u; $("#fO").textContent = o; $("#fN").textContent = x;
+  const cost = st.reduce((a, s) => a + (s.exa?.cost || 0), 0), searched = st.filter(s => s.exa).length;
+  const secs = running ? (performance.now() - started) / 1000 : elapsed;
+  $("#mT").textContent = secs == null ? "–" : secs < 60 ? `${secs.toFixed(0)} s` : `${Math.floor(secs / 60)}m ${Math.round(secs % 60)}s`;
+  $("#mC").textContent = searched ? `$${cost.toFixed(3)}` : "–";
+  $("#mP").textContent = searched ? `$${(cost / searched).toFixed(3)}` : "–";
+  if (!total) { if (!$("#rows .sk")) say("No listings loaded", "Pick a specialty and a place, then load the directory."); }
+  else if (running) say(`Checking ${plural(total, "listing")}`, `${done} done. Four run at a time, with one Exa search each.`);
+  else if (!done) say(`${plural(total, "listing")}, none checked yet`, `${place}, as the federal registry has them today.`);
+  else if (done < total) say(`${done} of ${total} checked`, `${u} need an update, ${o} confirmed, ${x} unverified.`);
+  else say(`${u} of ${total} listings need an update`, `${o} confirmed on the provider's own pages and ${x} unverified, so ${u + x} go to outreach, not ${total}.`);
 }
 
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
-  filter = t.dataset.f;
-  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x === t));
-  listings.forEach((_, i) => paint(i));
+  const apply = () => {
+    filter = t.dataset.f;
+    document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x === t));
+    listings.forEach((_, i) => { document.getElementById("r" + i).hidden = filter !== "all" && outcome(st[i]) !== filter; });
+    if (sel >= 0) renderPane();
+  };
+  document.startViewTransition && !calm.matches ? document.startViewTransition(apply) : apply();
 });
 
-/* ---------------- checking */
+/* ---------------- checking: the server streams two events per listing */
 async function checkOne(i) {
-  st[i] = {phase: "checking"}; paint(i);
+  st[i] = {phase: "search"}; paint(i); if (sel === i) renderPane();
   try {
     const r = await fetch("/api/verify", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(listings[i])});
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.detail || r.statusText);
-    st[i] = {phase: "done", check: j.check, sources: j.sources, exa: j.exa};
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+    const rd = r.body.getReader(), dec = new TextDecoder(); let buf = "";
+    for (;;) {
+      const {value, done} = await rd.read(); if (done) break;
+      buf += dec.decode(value, {stream: true});
+      for (let nl; (nl = buf.indexOf("\n")) >= 0; buf = buf.slice(nl + 1)) {
+        const ev = JSON.parse(buf.slice(0, nl));
+        if (ev.stage === "error") throw new Error(ev.detail);
+        if (ev.stage === "sources") st[i] = {phase: "read", sources: ev.sources, exa: ev.exa};
+        if (ev.stage === "check") st[i] = {...st[i], phase: "done", check: ev.check, llm_ms: ev.llm_ms, fresh: true};
+        paint(i); tick(); if (sel === i) renderPane();
+      }
+    }
+    if (st[i].phase !== "done") throw new Error("The check stopped before it finished");
   } catch (err) {
-    st[i] = {phase: "error", error: err.message};
+    st[i] = {phase: "error", error: err.message}; paint(i); tick(); if (sel === i) renderPane();
   }
-  paint(i); tick(); if (open === i) renderDrawer();
 }
 
 $("#checkBtn").onclick = async () => {
-  $("#checkBtn").disabled = $("#loadBtn").disabled = true;
-  $("#checkBtn").textContent = "Checking…";
-  st = listings.map(() => ({phase: "waiting"})); listings.forEach((_, i) => paint(i));
-  started = performance.now(); tick(); timer = setInterval(tick, 500);
+  running = true; started = performance.now();
+  $("#checkBtn").disabled = $("#loadBtn").disabled = true; $("#checkBtn").textContent = "Checking";
+  st = listings.map(() => ({phase: "queued"})); listings.forEach((_, i) => paint(i)); if (sel >= 0) renderPane();
+  tick(); timer = setInterval(tick, 500);
   let next = 0;
   const worker = async () => { while (next < listings.length) await checkOne(next++); };
   await Promise.all(Array.from({length: 4}, worker));
-  clearInterval(timer); tick();
+  clearInterval(timer); elapsed = (performance.now() - started) / 1000; running = false; tick();
   $("#checkBtn").textContent = "Check again";
   $("#checkBtn").disabled = $("#loadBtn").disabled = false;
+  if (sel >= 0) renderPane();
 };
 
-/* ---------------- drawer */
-$("#rows").addEventListener("click", e => { const r = e.target.closest(".row[data-i]"); if (r) openDrawer(+r.dataset.i); });
+/* ---------------- selection and the evidence pane */
+const visible = () => listings.map((_, i) => i).filter(i => !document.getElementById("r" + i).hidden);
 
-function openDrawer(i) {
-  const prev = open; open = i;
-  if (prev >= 0) paint(prev); paint(i);
-  if (!$("#drawer").classList.contains("on")) lastFocus = document.activeElement;
-  renderDrawer();
-  $("#drawer").classList.add("on"); $("#scrim").classList.add("on");
-  $("#drawer").focus({preventScroll: true});
+function select(i, show = true) {
+  const prev = sel; sel = i;
+  for (const k of [prev, i]) if (k >= 0 && listings[k]) {
+    document.getElementById("r" + k).setAttribute("aria-current", k === i);
+    document.getElementById("c" + k).classList.toggle("sel", k === i);
+  }
+  renderPane(); $("#pBody").scrollTop = 0;
+  if (show && !wide.matches && !$("#pane").classList.contains("on")) {
+    lastFocus = document.activeElement;
+    $("#pane").classList.add("on"); $("#scrim").classList.add("on");
+    $("#pane").focus({preventScroll: true});
+  }
 }
-function closeDrawer() {
-  const prev = open; open = -1; if (prev >= 0) paint(prev);
-  $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on");
+function closeSheet() {
+  if (!$("#pane").classList.contains("on")) return;
+  $("#pane").classList.remove("on"); $("#scrim").classList.remove("on");
   lastFocus?.focus({preventScroll: true});
 }
-$("#dClose").onclick = closeDrawer; $("#scrim").onclick = closeDrawer;
-document.addEventListener("keydown", e => {
-  if (open < 0) return;
-  if (e.key === "Escape") closeDrawer();
-  if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); step(1); }
-  if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); step(-1); }
+function step(d) {
+  const v = visible(), k = v.indexOf(sel), to = v[k < 0 ? 0 : k + d];
+  if (to == null) return;
+  select(to, false);
+  document.getElementById("r" + to).scrollIntoView({block: "nearest", behavior: calm.matches ? "auto" : "smooth"});
+}
+$("#rows").addEventListener("click", e => { const r = e.target.closest(".row[data-i]"); if (r) select(+r.dataset.i); });
+$("#strip").addEventListener("click", e => {
+  const c = e.target.closest(".cb"); if (!c) return;
+  select(+c.dataset.i);
+  document.getElementById("r" + c.dataset.i).scrollIntoView({block: "nearest", behavior: calm.matches ? "auto" : "smooth"});
 });
-const visible = () => listings.map((_, i) => i).filter(i => !document.getElementById("r" + i).hidden);
-function step(d) { const v = visible(), k = v.indexOf(open); if (k + d >= 0 && k + d < v.length) openDrawer(v[k + d]); }
-$("#dPrev").onclick = () => step(-1); $("#dNext").onclick = () => step(1);
+$("#pClose").onclick = closeSheet; $("#scrim").onclick = closeSheet;
+$("#pPrev").onclick = () => step(-1); $("#pNext").onclick = () => step(1);
+document.addEventListener("keydown", e => {
+  if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest("input,select,textarea")) return;
+  if (e.key === "Escape") closeSheet();
+  else if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); step(1); }
+  else if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); step(-1); }
+  else if (e.key === "c" && sel >= 0 && !running && !busy(st[sel])) checkOne(sel);
+});
 
+/* Exa highlights keep the page's markdown; drop the marks, keep the words. */
+const tidy = t => t.replace(/[#*|]+/g, " ").replace(/\s+/g, " ").replace(/^[\s,.;:…]+/, "");
 const cites = ids => (ids || []).map(id => `<button class="cite" data-s="${id}" aria-label="Show source ${id}">${id}</button>`).join("");
+const HOW = `<ol class="steps">
+  <li><b>Take the listing as the plan holds it.</b> Here that is the federal NPI registry, which many plan directories are built on.</li>
+  <li><b>Exa finds pages about that provider today.</b> Sites that only republish the registry are left out, since they can't confirm it.</li>
+  <li><b>Compare, and trust the right pages.</b> The provider's own site and their health system outrank aggregators, which often copy old data.</li>
+</ol>`;
 
-function renderDrawer() {
-  const l = listings[open], s = st[open], c = s.check, v = visible(), k = v.indexOf(open);
-  $("#dTitle").textContent = `${l.name}${l.credential ? ", " + l.credential : ""}`;
-  $("#dSub").textContent = `${l.specialty}, NPI ${l.npi}`;
-  $("#dPos").textContent = `${k + 1} of ${v.length}`;
-  $("#dPrev").disabled = k <= 0; $("#dNext").disabled = k >= v.length - 1;
-  if (!c) {
-    $("#dVerdict").innerHTML = s.phase === "done" ? `<span class="pill unverified">Unverified</span>` : s.phase === "error" ? `<span class="pill error">Error</span>` : `<span class="pill ${s.phase}">${s.phase === "checking" ? "Searching" : "Not checked yet"}</span>`;
-    $("#dBody").innerHTML = `
-      <table class="cmp"><thead><tr><th>Field</th><th>In the directory</th></tr></thead><tbody>
-        <tr><td>Address</td><td>${esc(fullAddr(l))}</td></tr><tr><td>Phone</td><td>${esc(l.phone || "Not listed")}</td></tr></tbody></table>
-      <p class="h4">${s.phase === "error" ? esc(s.error) : s.phase === "done" ? "Exa found no pages about this provider." : "Run a check to compare this listing with the web."}</p>`;
+function renderPane() {
+  const l = listings[sel], s = st[sel];
+  if (!l) {
+    $("#pTitle").textContent = "How a check works"; $("#pSub").textContent = "One listing at a time";
+    $("#pBody").innerHTML = HOW; $("#pPos").textContent = ""; $("#pPrev").disabled = $("#pNext").disabled = true;
     return;
   }
-  const used = new Set([...c.location.sources, ...c.phone.sources, ...c.accepting_sources, ...c.status_sources]);
-  const cell = (listed, f) => f.status === "differs" && f.web_value
-    ? [`<span class="stale">${esc(listed || "Not listed")}</span>`, `<span class="new"><mark>${esc(f.web_value)}</mark></span>${cites(f.sources)}`]
-    : f.status === "matches" ? [esc(listed), `<span class="okt">Matches</span>${cites(f.sources)}`]
-    : [esc(listed || "Not listed"), `<span class="dim">Not found</span>`];
-  const [a1, a2] = cell(fullAddr(l), c.location), [p1, p2] = cell(l.phone, c.phone);
-  $("#dVerdict").innerHTML = `<span class="pill ${c.result}">${LABEL[c.result]}</span><span class="conf">${c.confidence[0].toUpperCase() + c.confidence.slice(1)} confidence</span>`;
-  $("#dBody").innerHTML = `
-    <p class="sum">${esc(c.summary)}</p>
-    <table class="cmp"><thead><tr><th>Field</th><th>In the directory</th><th>On the web</th></tr></thead><tbody>
-      <tr><td>Address</td><td>${a1}</td><td>${a2}</td></tr>
-      <tr><td>Phone</td><td>${p1}</td><td>${p2}</td></tr>
-      <tr><td>New patients</td><td class="dim">Not listed</td><td>${c.accepting_new_patients === "no" ? `<span class="stale" style="text-decoration:none">Not accepting</span>` : NEWPT[c.accepting_new_patients]}${cites(c.accepting_sources)}</td></tr>
-      <tr><td>Practice status</td><td class="dim">Not listed</td><td>${STATUS[c.practice_status]}${cites(c.status_sources)}</td></tr>
-    </tbody></table>
-    <p class="h4">Sources from Exa (${s.sources.length})</p>
-    ${s.sources.map(x => `<div class="src ${used.has(x.id) ? "cited" : ""}" id="s-${x.id}">
-      <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>
-      <div class="m"><b>${x.id}</b>${esc(x.domain)}${x.published ? `, ${x.published}` : ""}${used.has(x.id) ? ", cited" : ""}</div>
-      <p>${esc(x.text)}</p></div>`).join("")}`;
+  const c = s.check, v = visible(), k = v.indexOf(sel);
+  $("#pTitle").textContent = `${l.name}${l.credential ? ", " + l.credential : ""}`;
+  $("#pSub").textContent = `${l.specialty}, NPI ${l.npi}`;
+  $("#pPos").textContent = k >= 0 ? `${k + 1} of ${v.length}` : "";
+  $("#pPrev").disabled = k <= 0; $("#pNext").disabled = k < 0 || k >= v.length - 1;
+  const listed = `
+    <div class="f"><div class="fl">Address in the directory</div><div class="fv">${esc(fullAddr(l))}</div></div>
+    <div class="f"><div class="fl">Phone in the directory</div><div class="fv">${esc(l.phone || "Not listed")}</div></div>`;
+
+  if (s.phase === "waiting" || s.phase === "queued") {
+    $("#pBody").innerHTML = `<div class="verdict idle">${s.phase === "queued" ? "In line to be checked" : "Not checked yet"}</div>
+      <div class="redline">${listed}</div>
+      <button class="pbtn" id="one" ${running ? "disabled" : ""}>Check this listing</button>${HOW}`;
+  } else if (busy(s)) {
+    $("#pBody").innerHTML = `<div class="verdict idle">${G.spin}${s.phase === "search" ? "Searching the web" : `Reading ${plural(s.sources.length, "page")}`}</div>
+      <div class="redline">${listed}</div>
+      ${s.phase === "read" ? evidence(s) : `<span class="nsk" style="width:70%;margin-top:30px"></span><span class="nsk" style="width:88%"></span><span class="nsk" style="width:52%"></span>`}`;
+  } else if (s.phase === "error") {
+    $("#pBody").innerHTML = `<div class="verdict error">${G.error}The check failed</div><p class="say">${esc(s.error)}</p>
+      <div class="redline">${listed}</div><button class="pbtn" id="one" ${running ? "disabled" : ""}>Check it again</button>`;
+  } else if (!c) {
+    $("#pBody").innerHTML = `<div class="verdict unverified">${G.unverified}Unverified</div>
+      <p class="say">Exa found no pages about this provider, so there is nothing to check the listing against. Call to verify.</p>
+      <div class="redline">${listed}</div>`;
+  } else {
+    const field = (label, was, f, what) => f.status === "differs" && f.web_value
+      ? `<div class="f"><div class="fl">${label}${cites(f.sources)}</div><div class="fv old">${esc(was || "Not listed")}</div><div class="fv new">${G.caret}${novel(f.web_value, was, what)}</div></div>`
+      : `<div class="f"><div class="fl">${label}${cites(f.sources)}</div><div class="fv">${esc(was || "Not listed")}</div>
+         <div class="fn ${f.status === "matches" && c.result === "confirmed" ? "ok" : ""}">${f.status === "matches" ? (c.result === "confirmed" ? "The web agrees" : "Agrees on aggregator sites only") : "Nothing current on the web"}</div></div>`;
+    $("#pBody").innerHTML = `
+      <div class="verdict ${c.result}">${G[c.result]}${LABEL[c.result]}<span class="conf">${c.confidence[0].toUpperCase() + c.confidence.slice(1)} confidence</span></div>
+      <p class="say">${esc(c.summary)}</p>
+      <div class="redline">
+        ${field("Address", fullAddr(l), c.location, "address")}
+        ${field("Phone", l.phone, c.phone, "phone")}
+        <div class="two">
+          <div class="f"><div class="fl">New patients</div><div class="fv">${NEWPT[c.accepting_new_patients]}</div><div class="fc">${cites(c.accepting_sources)}</div></div>
+          <div class="f"><div class="fl">Practice status</div><div class="fv">${STATUS[c.practice_status]}</div><div class="fc">${cites(c.status_sources)}</div></div>
+        </div>
+      </div>${evidence(s)}`;
+  }
+  const one = $("#one"); if (one) one.onclick = () => checkOne(sel);
 }
 
-$("#dBody").addEventListener("click", e => {
+/* Sources, grouped by how far each kind can be trusted once the model has classified them. */
+function evidence(s) {
+  const c = s.check, kinds = c?.source_kinds || {};
+  const used = new Set(c ? [...c.location.sources, ...c.phone.sources, ...c.accepting_sources, ...c.status_sources] : []);
+  const item = x => `<a class="src ${used.has(x.id) ? "cited" : ""} ${kinds[x.id] === "different_person" ? "off" : ""}" id="s-${x.id}" href="${esc(x.url)}" target="_blank" rel="noopener">
+      <span class="id">${x.id}</span><span><b>${esc(x.title)}</b>
+      <span class="m">${esc(x.domain)}${x.published ? `, ${x.published}` : ""}${used.has(x.id) ? ", cited" : ""}</span>
+      <span class="t">${esc(tidy(x.text))}</span></span></a>`;
+  const head = `<div class="eh"><h3>${plural(s.sources.length, "page")} from Exa</h3><span>${(s.exa.ms / 1000).toFixed(1)} s, $${s.exa.cost.toFixed(3)}</span></div>`;
+  const groups = KINDS.map(([k, label, col]) => [label, col, s.sources.filter(x => (kinds[x.id] || "other") === k)]).filter(g => g[2].length);
+  if (!c || !Object.keys(kinds).length) return head + s.sources.map(item).join("");
+  return head + `<div class="mix" aria-hidden="true">${groups.map(([, col, xs]) => `<i style="--n:${xs.length};--c:${col}"></i>`).join("")}</div>` +
+    groups.map(([label, col, xs]) => `<div class="grp" style="--c:${col}"><i></i>${label} <span>${xs.length}</span></div>${xs.map(item).join("")}`).join("");
+}
+
+$("#pBody").addEventListener("click", e => {
   const b = e.target.closest(".cite"); if (!b) return;
   const el = document.getElementById("s-" + b.dataset.s); if (!el) return;
-  el.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center"});
-  el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1500);
+  el.scrollIntoView({behavior: calm.matches ? "auto" : "smooth", block: "center"});
+  el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1400);
 });
+
+load();
 </script>
 </body>
 </html>

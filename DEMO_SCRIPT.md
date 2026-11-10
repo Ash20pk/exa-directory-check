@@ -10,18 +10,21 @@ patients. Anthem plans are being sued over it, and the standard fix is calling o
 one by one."
 
 **0:20–0:35: the listings**
-Click **Load listings**. "These are real psychiatrists in Indianapolis, where Elevance
+The page opens with the listings loaded. "These are real psychiatrists in Indianapolis, where Elevance
 is headquartered, straight from the federal NPI registry that directories are built on."
 
 **0:35–1:00: the check**
 Click **Check all listings**. "One Exa search per doctor, looking for the pages that say
 where they practise today. Each one takes about a second and costs under a cent." Rows
-resolve. "Then a model compares the listing with what Exa found."
+show the pages Exa found, then resolve; the panel on the right lists them as they land.
+"Then a model compares the listing with what Exa found."
 
 **1:00–1:35: the findings**
-Point at the headline: "[3] of 12 need an update." Open the row with a redline.
+Point at the headline: "[3] of 12 need an update." Click **Needs update**, then the row
+with a redline; its evidence opens on the right.
 "The directory says Indianapolis; the web says Anchorage. The stale value is struck out,
 the current one sits beside it, and here's the page it came from." Click a citation.
+"And the sources are grouped: the provider's own pages first, aggregators last."
 Then point at an **Unverified** row: "When only aggregators agree, it doesn't call that
 confirmed. Aggregators are often stale copies, and so are the sites that just mirror
 the registry, which is why I exclude those from the search entirely."
