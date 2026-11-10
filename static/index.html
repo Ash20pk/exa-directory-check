@@ -4,117 +4,195 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Directory Check</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="preload" href="/static/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+/* Self-hosted Public Sans, plus an Arial fallback tuned to the same metrics,
+   so text occupies the same space before and after the font arrives. */
+@font-face{font-family:"Public Sans";src:url(/static/fonts/public-sans-latin.woff2) format("woff2");font-weight:400 700;font-display:swap}
+@font-face{font-family:"PS Fallback";src:local("Arial");size-adjust:93.25%;ascent-override:101.88%;descent-override:24.13%;line-gap-override:0%}
+
 :root{
-  --paper:#f4f7f6; --sheet:#ffffff; --ink:#0f2a2e; --soft:#4d6266; --faint:#7d8f92;
-  --rule:#cbd6d3; --rule-soft:#e2e9e7;
-  --ok:#1d7a58; --ok-bg:#e3f2ea; --upd:#a9520b; --upd-bg:#fbeedd; --unk:#5f6b6d; --unk-bg:#eceff0;
-  --del:#a3261f; --del-bg:#fbe5e3; --ins:#1d7a58; --ins-bg:#dff1e7; --link:#0b5cad;
+  --bg:#f3f6f5; --sheet:#fff; --sheet-2:#f8faf9; --ink:#0f2a2e; --ink-2:#3f5559; --ink-3:#74878a;
+  --line:#d5dfdc; --line-2:#e7eeec;
+  --ok:#17785a; --ok-bg:#e1f2ea; --upd:#a24f0c; --upd-bg:#fcecd9; --unk:#5d6a6c; --unk-bg:#eceff0;
+  --del:#a3261f; --del-bg:#fbe6e4; --ins:#145f47; --ins-bg:#d8efe3; --focus:#0b5cad; --link:#0b5cad;
+  --row:76px; --radius:10px;
+  --font:"Public Sans","PS Fallback",system-ui,sans-serif;
 }
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 "Public Sans",system-ui,sans-serif;font-variant-numeric:tabular-nums}
-.wrap{max-width:1240px;margin:0 auto;padding:40px 24px 96px}
-a{color:var(--link)}
-:focus-visible{outline:3px solid var(--link);outline-offset:2px;border-radius:3px}
+html{scrollbar-gutter:stable;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--font);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+[hidden]{display:none!important}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-/* intro */
-.intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 40px;align-items:end;padding-bottom:28px;border-bottom:1px solid var(--rule)}
-h1{font-size:2.25rem;line-height:1.1;font-weight:700;letter-spacing:-.02em;margin:0}
-.lede{grid-column:1;max-width:62ch;margin:0;color:var(--soft);font-size:1.0625rem}
-.credit{grid-column:2;grid-row:1/3;margin:0;color:var(--faint);font-size:.875rem;text-align:right;line-height:1.6}
+/* ---------- top bar */
+.top{background:var(--ink);color:#fff}
+.top .in{max-width:1280px;margin:0 auto;height:56px;padding:0 24px;display:flex;align-items:center;gap:16px}
+.mark{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em}
+.mark svg{flex:none}
+.ctx{color:#a9c1bf;font-size:13.5px;border-left:1px solid #2f4a4e;padding-left:16px}
+.top .credit{margin-left:auto;color:#a9c1bf;font-size:13px}
 
-/* controls */
-form{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end;margin:28px 0 0}
-label{display:flex;flex-direction:column;gap:5px;font-size:.875rem;font-weight:500;color:var(--soft)}
-select,input{height:42px;font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:9px 11px;min-width:0}
-input[name=state]{width:4.5rem;text-transform:uppercase}
-input[name=city]{width:11rem}
-button{height:42px;font:inherit;font-weight:600;border-radius:6px;padding:0 18px;cursor:pointer;border:1px solid var(--ink)}
-.secondary{background:var(--sheet);color:var(--ink)}
-.primary{background:var(--ink);color:#fff}
-button:disabled{opacity:.45;cursor:not-allowed}
-.spacer{flex:1}
+main{max-width:1280px;margin:0 auto;padding:24px 24px 64px}
+.lede{margin:0 0 18px;color:var(--ink-2);max-width:72ch;font-size:15px}
 
-/* outcome sentence */
-.outcome{margin:36px 0 14px;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 28px}
-.outcome h2{margin:0;font-size:1.625rem;line-height:1.25;font-weight:600;letter-spacing:-.01em}
-.outcome h2 b{color:var(--upd)}
-.outcome p{margin:0;color:var(--soft);font-size:.9375rem}
+/* ---------- toolbar */
+.toolbar{display:flex;align-items:flex-end;gap:12px;background:var(--sheet);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.field{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--ink-3)}
+.field select,.field input{height:38px;border:1px solid var(--line);border-radius:7px;background:var(--sheet);padding:0 10px;font-size:14.5px;font-weight:400;color:var(--ink)}
+.field select{width:15rem;padding-right:28px}
+.field input[name=city]{width:11rem}
+.field input[name=state]{width:4.25rem;text-transform:uppercase}
+.btn{height:38px;padding:0 16px;border-radius:7px;font-weight:600;font-size:14.5px;cursor:pointer;border:1px solid var(--line);background:var(--sheet);white-space:nowrap}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{margin-left:auto;background:var(--ink);border-color:var(--ink);color:#fff;min-width:11.5rem}
+.btn.primary:hover{background:#1b3f44}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 
-/* queue */
-.queue{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
-.head,.row{display:grid;grid-template-columns:minmax(180px,1.1fr) minmax(220px,1.5fr) minmax(150px,.9fr) minmax(240px,1.6fr);gap:20px;padding:14px 20px}
-.head{font-size:.8125rem;font-weight:600;color:var(--soft);border-bottom:1px solid var(--rule);background:#fafcfb}
-.item{border-bottom:1px solid var(--rule-soft)}
-.item:last-child{border-bottom:0}
-.who b{display:block;font-weight:600}
-.who span{display:block;font-size:.875rem;color:var(--soft)}
-.who small{font-size:.8125rem;color:var(--faint)}
-.val{font-size:.9375rem;min-width:0;overflow-wrap:anywhere}
-.val .now{display:block}
-.val del{display:inline;background:var(--del-bg);color:var(--del);text-decoration-thickness:1.5px;padding:1px 3px;border-radius:2px}
-.val ins{display:block;margin-top:5px;background:var(--ins-bg);color:var(--ins);text-decoration:none;padding:1px 3px;border-radius:2px;width:fit-content;max-width:100%}
-.val .ok{display:block;margin-top:4px;font-size:.8125rem;color:var(--ok)}
-.val .none{display:block;margin-top:4px;font-size:.8125rem;color:var(--faint)}
-.cite{height:auto;font:600 .75rem "Public Sans",sans-serif;color:var(--link);background:none;border:0;padding:0 2px;margin-left:2px;cursor:pointer;vertical-align:super}
+/* ---------- summary (always rendered, fixed height: nothing below it moves) */
+.summary{display:grid;grid-template-columns:minmax(0,1fr) 330px 300px;gap:32px;align-items:center;height:96px;margin-top:16px;padding:0 20px;background:var(--sheet);border:1px solid var(--line);border-radius:var(--radius)}
+.summary>div{min-width:0}
+.summary h2{margin:0;font-size:21px;line-height:28px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.summary h2 .n{color:var(--upd)}
+.summary p{margin:2px 0 0;font-size:13.5px;line-height:20px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{height:8px;border-radius:4px;background:var(--line-2)}
+.legend{display:flex;gap:14px;margin-top:10px;font-size:13px;line-height:18px;color:var(--ink-2);white-space:nowrap}
+.legend b{display:inline-block;min-width:1.4em;font-weight:650}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend span:before{content:"";width:8px;height:8px;border-radius:2px;background:var(--c)}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.metric b{display:block;font-size:19px;line-height:26px;font-weight:650}
+.metric span{font-size:12.5px;color:var(--ink-3)}
+
+/* ---------- filters */
+.filters{display:flex;gap:4px;margin:18px 0 10px;height:34px}
+.tab{white-space:nowrap;flex:none;height:34px;padding:0 12px;border-radius:7px;border:0;background:none;font-size:14px;font-weight:550;color:var(--ink-2);cursor:pointer;display:flex;align-items:center;gap:7px}
+.tab .c{width:2.4em;padding:0;height:20px;line-height:20px;border-radius:10px;background:var(--line-2);font-size:12px;font-weight:600;text-align:center}
+.tab:hover{background:var(--line-2)}
+.tab[aria-selected=true]{background:var(--sheet);box-shadow:0 0 0 1px var(--line);color:var(--ink)}
+.tab:disabled{opacity:.5;cursor:default}
+
+/* ---------- table: fixed columns, fixed row height */
+.table{background:var(--sheet);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.cols{display:grid;grid-template-columns:24% 27% 29% 20%}
+.thead{height:40px;align-items:center;padding:0 8px;border-bottom:1px solid var(--line);background:var(--sheet-2);font-size:12.5px;font-weight:600;color:var(--ink-3)}
+.thead span{padding:0 12px}
+.row{width:100%;height:var(--row);padding:0 8px;align-items:center;border:0;border-bottom:1px solid var(--line-2);background:var(--sheet);text-align:left;cursor:pointer;position:relative}
+.row:last-child{border-bottom:0}
+.row:hover{background:var(--sheet-2)}
+.row[aria-current=true]{background:#edf4f2}
+.row:before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 2px 2px 0;background:transparent}
+.row.update_needed:before{background:var(--upd)} .row.confirmed:before{background:var(--ok)}
+.cell{padding:0 12px;min-width:0}
+.l1,.l2{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.l1{font-size:14.5px;line-height:21px;font-weight:500}
+.l2{font-size:13px;line-height:19px;color:var(--ink-3);margin-top:3px}
+.who .l1{font-weight:650}
+.stale{color:var(--del);text-decoration:line-through;text-decoration-thickness:1.5px;text-decoration-color:rgba(163,38,31,.6)}
+.new{color:var(--ins);font-weight:600}
+.new mark{background:var(--ins-bg);color:inherit;padding:1px 4px;border-radius:3px}
+.dim{color:var(--ink-3)}
+.okt{color:var(--ok)}
+
+.pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:12px;font-size:12.5px;font-weight:650;white-space:nowrap}
+.pill:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.confirmed{color:var(--ok);background:var(--ok-bg)}
+.pill.update_needed{color:var(--upd);background:var(--upd-bg)}
+.pill.unverified{color:var(--unk);background:var(--unk-bg)}
+.pill.waiting{color:var(--ink-3);background:transparent;padding:0;font-weight:500}
+.pill.waiting:before{background:var(--line)}
+.pill.checking{color:var(--ink-2);background:var(--line-2)}
+.pill.checking:before{animation:blink 1s ease-in-out infinite}
+.pill.error{color:var(--del);background:var(--del-bg)}
+.status .l2{color:var(--del);font-weight:600}
+.chev{position:absolute;right:16px;top:50%;margin-top:-8px;color:var(--ink-3);opacity:0}
+.row:hover .chev,.row:focus-visible .chev{opacity:1}
+
+.sk{display:block;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--line-2) 0%,#f4f7f6 50%,var(--line-2) 100%);background-size:200% 100%;animation:shim 1.3s linear infinite}
+.sk{margin:5px 0}
+.sk+.sk{margin-top:14px}
+@keyframes shim{to{background-position:-200% 0}}
+@keyframes blink{50%{opacity:.25}}
+
+.empty{display:flex;flex-direction:column;justify-content:center;gap:6px;height:calc(var(--row) * 6);padding:0 32px;color:var(--ink-2)}
+.empty b{color:var(--ink);font-size:16px}
+.empty.err b{color:var(--del)}
+.foot{margin:14px 2px 0;color:var(--ink-3);font-size:13px;max-width:90ch}
+
+/* ---------- drawer (overlay: opening it never moves the page) */
+.scrim{position:fixed;inset:0;background:rgba(15,42,46,.28);opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--sheet);box-shadow:-12px 0 32px rgba(15,42,46,.14);transform:translateX(100%);transition:transform .25s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;visibility:hidden}
+.drawer.on{transform:none;visibility:visible}
+.dh{padding:20px 24px 16px;border-bottom:1px solid var(--line-2)}
+.dh .top-line{display:flex;align-items:flex-start;gap:12px}
+.dh h3{margin:0;font-size:20px;line-height:26px;font-weight:700;letter-spacing:-.01em}
+.dh .sub{margin:2px 0 0;color:var(--ink-3);font-size:13.5px}
+.x{margin-left:auto;width:32px;height:32px;border-radius:7px;border:0;background:none;cursor:pointer;color:var(--ink-2);flex:none}
+.x:hover{background:var(--line-2)}
+.dh .verdict{display:flex;align-items:center;gap:10px;margin-top:14px}
+.dh .verdict .conf{font-size:13px;color:var(--ink-3)}
+.db{flex:1;overflow:auto;padding:18px 24px 24px}
+.db .sum{margin:0 0 18px;font-size:15px;line-height:1.55}
+.cmp{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}
+.cmp th{text-align:left;font-size:12.5px;font-weight:600;color:var(--ink-3);padding:0 10px 8px 0;border-bottom:1px solid var(--line)}
+.cmp td{vertical-align:top;padding:10px 10px 10px 0;border-bottom:1px solid var(--line-2);overflow-wrap:anywhere}
+.cmp td:first-child{font-weight:600;width:24%}
+.cmp .stale{display:inline}
+.cite{border:0;background:none;padding:0 2px;margin-left:2px;font-size:11.5px;font-weight:700;color:var(--link);cursor:pointer;vertical-align:super;line-height:1}
 .cite:hover{text-decoration:underline}
-
-.result{display:grid;gap:6px;align-content:start}
-.badge{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:.9375rem;width:fit-content}
-.badge:before{content:"";width:10px;height:10px;border-radius:50%;background:currentColor}
-.badge.confirmed{color:var(--ok)} .badge.update_needed{color:var(--upd)} .badge.unverified{color:var(--unk)}
-.badge.waiting{color:var(--faint);font-weight:500}
-.badge.checking{color:var(--soft);font-weight:500}
-.badge.checking:before{animation:pulse 1s ease-in-out infinite}
-@keyframes pulse{50%{opacity:.25}}
-.summary{margin:0;font-size:.9375rem;color:var(--ink)}
-.flag{font-size:.875rem;font-weight:600;color:var(--del)}
-.more{height:auto;justify-self:start;background:none;border:0;padding:0;color:var(--link);font-weight:500;font-size:.875rem}
-.more:hover{text-decoration:underline}
-.item.update_needed{box-shadow:inset 4px 0 0 var(--upd)}
-.item.confirmed{box-shadow:inset 4px 0 0 var(--ok)}
-.item.unverified{box-shadow:inset 4px 0 0 var(--rule)}
-.err{color:var(--del);font-size:.875rem}
-
-.sources{padding:4px 20px 18px calc(20px + 4px);display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
-.src{border:1px solid var(--rule-soft);border-radius:8px;padding:10px 12px;font-size:.875rem;background:#fbfcfc;transition:background .5s,border-color .5s}
-.src.cited{border-color:var(--rule)}
-.src.flash{background:#fff4cf;border-color:#e6c766}
-.src a{font-weight:600;text-decoration:none;color:var(--ink)}
+.h4{margin:22px 0 10px;font-size:13px;font-weight:650;color:var(--ink-2)}
+.src{display:block;border:1px solid var(--line-2);border-radius:8px;padding:10px 12px;margin-bottom:8px;transition:background .5s,border-color .5s}
+.src.cited{border-color:var(--line)}
+.src.flash{background:#fff6d6;border-color:#e2c25c}
+.src a{color:var(--ink);font-weight:600;font-size:14px;text-decoration:none}
 .src a:hover{text-decoration:underline}
-.src .meta{color:var(--faint);font-size:.8125rem;margin:2px 0 5px}
-.src p{margin:0;color:var(--soft);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.src .m{font-size:12.5px;color:var(--ink-3);margin:2px 0 4px}
+.src .m b{color:var(--link);font-weight:700;margin-right:6px}
+.src p{margin:0;font-size:13.5px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.df{display:flex;gap:8px;padding:12px 24px;border-top:1px solid var(--line-2);background:var(--sheet-2)}
+.df .btn{height:34px;font-size:13.5px}
+.df .pos{margin-left:auto;align-self:center;font-size:13px;color:var(--ink-3)}
 
-.empty{padding:48px 20px;color:var(--soft);text-align:left;max-width:60ch}
-.empty b{color:var(--ink)}
-.note{color:var(--faint);font-size:.875rem;margin-top:18px;max-width:80ch}
-
-@media (max-width:900px){
-  .intro{grid-template-columns:1fr}.credit{grid-column:1;grid-row:auto;text-align:left}
-  .head{display:none}
-  .row{grid-template-columns:1fr;gap:12px}
-  .val:before,.result:before{content:attr(data-label);display:block;font-size:.8125rem;font-weight:600;color:var(--faint);margin-bottom:2px}
-  .sources{grid-template-columns:1fr;padding:4px 16px 16px}
-  .spacer{display:none}
+/* ---------- small screens */
+@media (max-width:980px){
+  .summary{grid-template-columns:minmax(0,1fr);grid-template-rows:48px 28px 44px;height:auto;padding:16px 18px;gap:14px}
+  .summary h2{font-size:18px}
+  .legend{gap:12px;font-size:12.5px}
+  .ctx{display:none}
+}
+@media (max-width:760px){
+  main{padding:16px 16px 48px}
+  .top .in{padding:0 16px}.top .credit{display:none}
+  .toolbar{flex-wrap:wrap}.field{flex:1 1 40%}.field select,.field input[name=city]{width:100%}
+  .btn.primary{margin-left:0;flex:1 1 100%}
+  .filters{overflow-x:auto;scrollbar-width:none}
+  .thead{display:none}
+  .cols{grid-template-columns:1fr auto}
+  .row{height:156px;padding:12px 6px;grid-template-areas:"who status" "dir dir" "web web";row-gap:8px}
+  .who{grid-area:who}.dir{grid-area:dir}.web{grid-area:web}.status{grid-area:status;text-align:right}
+  .status .l2{display:none}.chev{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-[hidden]{display:none!important}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="intro">
-    <h1>Directory Check</h1>
-    <p class="lede">Health-plan provider directories go stale: doctors move, change numbers or stop taking patients, and members hit dead ends. This checks each listing against what the provider's own pages say today, and shows the correction with its source.</p>
-    <p class="credit">Listings from the CMS NPI Registry<br>Web evidence from Exa</p>
+<header class="top"><div class="in">
+  <div class="mark">
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="5" fill="none" stroke="#7fd1b3" stroke-width="1.6"/><path d="M6 11.5l3.2 3L16 7.5" fill="none" stroke="#7fd1b3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Directory Check
   </div>
+  <span class="ctx">Prototype for Elevance Health network operations</span>
+  <span class="credit">Listings from the CMS NPI Registry, evidence from Exa</span>
+</div></header>
 
-  <form id="load">
-    <label>Specialty
+<main>
+  <p class="lede">Checks each provider listing against what the provider's own pages say today, and routes only the wrong ones to outreach, with the evidence attached.</p>
+
+  <form class="toolbar" id="load">
+    <label class="field">Specialty
       <select name="specialty">
         <option>Psychiatry</option>
         <option>Child &amp; Adolescent Psychiatry</option>
@@ -122,134 +200,271 @@ button:disabled{opacity:.45;cursor:not-allowed}
         <option>Family Medicine</option>
       </select>
     </label>
-    <label>City<input name="city" value="Indianapolis" required></label>
-    <label>State<input name="state" value="IN" maxlength="2" required></label>
-    <button class="secondary" id="loadBtn">Load listings</button>
-    <span class="spacer"></span>
-    <button type="button" class="primary" id="checkBtn" disabled>Check all listings</button>
+    <label class="field">City<input name="city" value="Indianapolis" required autocomplete="off"></label>
+    <label class="field">State<input name="state" value="IN" maxlength="2" required autocomplete="off"></label>
+    <button class="btn" id="loadBtn">Load listings</button>
+    <button type="button" class="btn primary" id="checkBtn" disabled>Check all listings</button>
   </form>
 
-  <div class="outcome" id="outcome" hidden><h2 id="headline"></h2><p id="sub"></p></div>
+  <section class="summary" aria-live="polite">
+    <div><h2 id="headline">No listings loaded</h2><p id="sub">Load a specialty and city to start a check.</p></div>
+    <div>
+      <div class="seg" id="seg" aria-hidden="true"></div>
+      <div class="legend"><span style="--c:var(--upd)">Needs update <b id="lgU">0</b></span><span style="--c:var(--ok)">Confirmed <b id="lgO">0</b></span><span style="--c:#9aa7a9">Unverified <b id="lgN">0</b></span></div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><b id="mT">–</b><span>Elapsed</span></div>
+      <div class="metric"><b id="mC">–</b><span>Exa search cost</span></div>
+      <div class="metric"><b id="mP">–</b><span>Per listing</span></div>
+    </div>
+  </section>
 
-  <div class="queue" id="queue" style="margin-top:24px">
-    <div class="empty"><b>Load a set of listings to start.</b> They come straight from the federal NPI registry, the same self-reported data many plan directories are built on.</div>
+  <div class="filters" role="tablist" aria-label="Filter listings">
+    <button class="tab" role="tab" aria-selected="true" data-f="all">All <span class="c" id="fA">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-f="update_needed">Needs update <span class="c" id="fU">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-f="confirmed">Confirmed <span class="c" id="fO">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-f="unverified">Unverified <span class="c" id="fN">0</span></button>
   </div>
-  <p class="note">Results are leads for a network-operations analyst, not final corrections. Sites that only republish the NPI registry are excluded from the search, since they would just repeat the listing back.</p>
-</div>
+
+  <section class="table" aria-label="Listings">
+    <div class="cols thead" aria-hidden="true"><span>Provider</span><span>In the directory</span><span>What the web says</span><span>Result</span></div>
+    <div id="rows"><div class="empty"><b>Load listings to begin.</b><span>They come from the federal NPI registry, the self-reported data many plan directories are built on.</span></div></div>
+  </section>
+  <p class="foot">Results are leads for an analyst, not automatic edits. Sites that only republish the NPI registry are excluded from the search, since they would repeat the listing back.</p>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle" tabindex="-1">
+  <div class="dh">
+    <div class="top-line"><div><h3 id="dTitle"></h3><p class="sub" id="dSub"></p></div>
+      <button class="x" id="dClose" aria-label="Close details"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9m0-9l-9 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+    <div class="verdict" id="dVerdict"></div>
+  </div>
+  <div class="db" id="dBody"></div>
+  <div class="df"><button class="btn" id="dPrev">Previous</button><button class="btn" id="dNext">Next</button><span class="pos" id="dPos"></span></div>
+</aside>
 
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let listings = [], state = {};
 const LABEL = {confirmed: "Confirmed", update_needed: "Needs update", unverified: "Unverified"};
+const STATUS = {active: "Active", moved: "Moved", retired: "Retired", left_practice: "Left the practice", deceased: "Deceased", unknown: "Unknown"};
+const NEWPT = {yes: "Yes", no: "No", unknown: "Unknown"};
+let listings = [], st = [], filter = "all", open = -1, started = 0, timer = 0, lastFocus = null;
 
+/* ---------------- loading listings */
 $("#load").onsubmit = async e => {
   e.preventDefault();
   const q = new URLSearchParams(new FormData(e.target));
-  $("#loadBtn").disabled = true; $("#checkBtn").disabled = true; $("#outcome").hidden = true;
-  $("#queue").innerHTML = `<div class="empty">Loading listings from the NPI registry…</div>`;
+  $("#loadBtn").disabled = $("#checkBtn").disabled = true;
+  listings = []; st = [];
+  $("#rows").innerHTML = Array.from({length: 8}, skeletonRow).join("");
+  setSummary("Loading listings…", "Reading the NPI registry.");
   try {
     const r = await fetch("/api/listings?" + q); const j = await r.json();
     if (!r.ok) throw new Error(j.detail || r.statusText);
-    listings = j.listings; state = {};
-    renderQueue();
-    $("#checkBtn").disabled = !listings.length;
+    listings = j.listings; st = listings.map(() => ({phase: "waiting"}));
+    if (!listings.length) {
+      $("#rows").innerHTML = `<div class="empty"><b>No listings found.</b><span>Try a larger city or another specialty.</span></div>`;
+      setSummary("No listings found", "Nothing matched that specialty and place.");
+    } else {
+      $("#rows").innerHTML = listings.map((_, i) => `<button type="button" class="row cols" id="r${i}" data-i="${i}"></button>`).join("");
+      listings.forEach((_, i) => paint(i));
+      setSummary(`${listings.length} listings ready to check`, `${q.get("specialty")} in ${q.get("city")}, ${q.get("state").toUpperCase()}. Each check runs one Exa search.`);
+      $("#checkBtn").disabled = false;
+    }
   } catch (err) {
-    $("#queue").innerHTML = `<div class="empty err">Couldn't load listings: ${esc(err.message)}. Check the city and state, then try again.</div>`;
-  } finally { $("#loadBtn").disabled = false; }
+    $("#rows").innerHTML = `<div class="empty err"><b>Couldn't load listings.</b><span>${esc(err.message)}. Check the city and state, then try again.</span></div>`;
+    setSummary("No listings loaded", "Loading failed.");
+  } finally {
+    $("#loadBtn").disabled = false; tally();
+  }
 };
 
-function renderQueue() {
-  if (!listings.length) { $("#queue").innerHTML = `<div class="empty">No listings for that specialty and place. Try a larger city or another specialty.</div>`; return; }
-  $("#queue").innerHTML = `<div class="head" role="row"><span>Provider</span><span>Address in directory</span><span>Phone in directory</span><span>Result</span></div>` +
-    listings.map((l, i) => `<div class="item" id="item-${i}"></div>`).join("");
-  listings.forEach((_, i) => renderItem(i));
+function skeletonRow() {
+  return `<div class="row cols" aria-hidden="true" style="cursor:default">
+    <div class="cell"><span class="sk" style="width:62%"></span><span class="sk" style="width:40%"></span></div>
+    <div class="cell"><span class="sk" style="width:80%"></span><span class="sk" style="width:35%"></span></div>
+    <div class="cell"><span class="sk" style="width:70%"></span><span class="sk" style="width:30%"></span></div>
+    <div class="cell"><span class="sk" style="width:45%"></span></div></div>`;
 }
 
-const cites = (ids, i) => (ids || []).slice(0, 3).map(id => `<button class="cite" data-i="${i}" data-s="${id}" aria-label="Show source ${id}">${id}</button>`).join("");
+/* ---------------- one row; its height never changes */
+const fullAddr = l => `${l.address}, ${l.city}, ${l.state} ${l.zip}`;
 
-function field(listed, f, i) {
-  if (!f) return `<span class="now">${esc(listed || "Not listed")}</span>`;
-  if (f.status === "differs" && f.web_value)
-    return `<del>${esc(listed || "Not listed")}</del><ins>${esc(f.web_value)}${cites(f.sources, i)}</ins>`;
-  if (f.status === "matches") return `<span class="now">${esc(listed)}</span><span class="ok">Matches the web${cites(f.sources, i)}</span>`;
-  return `<span class="now">${esc(listed || "Not listed")}</span><span class="none">No current source found</span>`;
+function paint(i) {
+  const l = listings[i], s = st[i], c = s.check, el = document.getElementById("r" + i);
+  el.className = "row cols " + (c ? c.result : "");
+  const res = c ? c.result : (s.phase === "done" || s.phase === "error") ? "unverified" : null;
+  el.hidden = filter !== "all" && res !== filter;
+  el.setAttribute("aria-current", open === i);
+  const addrStale = c?.location.status === "differs", phoneStale = c?.phone.status === "differs";
+
+  let web, status;
+  if (s.phase === "waiting") {
+    web = `<span class="l1 dim">Not checked yet</span><span class="l2">&nbsp;</span>`;
+    status = `<span class="pill waiting">Waiting</span>`;
+  } else if (s.phase === "checking") {
+    web = `<span class="sk" style="width:72%"></span><span class="sk" style="width:38%"></span>`;
+    status = `<span class="pill checking">Searching</span>`;
+  } else if (s.phase === "error") {
+    web = `<span class="l1 dim">Check failed</span><span class="l2">${esc(s.error)}</span>`;
+    status = `<span class="pill error">Error</span>`;
+  } else if (!c) {
+    web = `<span class="l1 dim">No pages found for this provider</span><span class="l2">&nbsp;</span>`;
+    status = `<span class="pill unverified">Unverified</span>`;
+  } else {
+    web = `<span class="l1">${webLine(c.location, "address", c.result)}</span><span class="l2">${webLine(c.phone, "phone", c.result)}</span>`;
+    const note = c.accepting_new_patients === "no" ? "Not accepting new patients"
+      : ["moved", "retired", "left_practice", "deceased"].includes(c.practice_status) ? STATUS[c.practice_status] : "";
+    status = `<span class="pill ${c.result}">${LABEL[c.result]}</span><span class="l2">${note || "&nbsp;"}</span>`;
+  }
+  el.innerHTML = `
+    <span class="cell who"><span class="l1">${esc(l.name)}${l.credential ? ", " + esc(l.credential) : ""}</span><span class="l2">${esc(l.specialty)}, NPI ${esc(l.npi)}</span></span>
+    <span class="cell dir"><span class="l1 ${addrStale ? "stale" : ""}" title="${esc(fullAddr(l))}">${esc(fullAddr(l))}</span><span class="l2 ${phoneStale ? "stale" : ""}">${esc(l.phone || "No phone listed")}</span></span>
+    <span class="cell web">${web}</span>
+    <span class="cell status">${status}</span>
+    <svg class="chev" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5l4.5 4.5L6 12.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  el.setAttribute("aria-label", `${l.name}: ${c ? LABEL[c.result] : s.phase}. Open details.`);
 }
 
-function renderItem(i) {
-  const l = listings[i], s = state[i] || {phase: "waiting"}, c = s.check;
-  const el = document.getElementById("item-" + i);
-  el.className = "item " + (c ? c.result : "");
-  const addr = `${l.address}, ${l.city}, ${l.state} ${l.zip}`;
-  let result;
-  if (s.phase === "waiting") result = `<span class="badge waiting">Not checked yet</span>`;
-  else if (s.phase === "checking") result = `<span class="badge checking">Searching the web…</span>`;
-  else if (s.phase === "error") result = `<span class="err">${esc(s.error)}</span>`;
-  else if (!c) result = `<span class="badge unverified">Unverified</span><p class="summary">Exa found no pages about this provider.</p>`;
-  else result = `<span class="badge ${c.result}">${LABEL[c.result]}</span>
-      <p class="summary">${esc(c.summary)}</p>
-      ${c.accepting_new_patients === "no" ? `<span class="flag">Not accepting new patients${cites(c.accepting_sources, i)}</span>` : ""}
-      <button class="more" aria-expanded="${!!s.open}" data-toggle="${i}">${s.open ? "Hide" : "Show"} ${s.sources.length} sources</button>`;
-  el.innerHTML = `<div class="row">
-      <div class="who"><b>${esc(l.name)}${l.credential ? ", " + esc(l.credential) : ""}</b><span>${esc(l.specialty)}</span><small>NPI ${esc(l.npi)}</small></div>
-      <div class="val" data-label="Address in directory">${field(addr, c?.location, i)}</div>
-      <div class="val" data-label="Phone in directory">${field(l.phone, c?.phone, i)}</div>
-      <div class="result" data-label="Result">${result}</div>
-    </div>
-    ${s.open ? `<div class="sources">${s.sources.map(src => `
-      <div class="src ${citedIds(c).has(src.id) ? "cited" : ""}" id="src-${i}-${src.id}">
-        <a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.title)}</a>
-        <div class="meta">${src.id}, ${esc(src.domain)}${src.published ? ", " + src.published : ""}</div>
-        <p>${esc(src.text)}</p></div>`).join("")}</div>` : ""}`;
+function webLine(f, what, result) {
+  if (f.status === "differs" && f.web_value) return `<span class="new"><mark>${esc(f.web_value)}</mark></span>`;
+  const W = what === "address" ? "Address" : "Phone";
+  if (f.status === "matches" && result === "confirmed") return `<span class="okt">${W} matches</span>`;
+  if (f.status === "matches") return `<span class="dim">${W} matches aggregator sites only</span>`;
+  return `<span class="dim">No current ${what} found</span>`;
 }
 
-const citedIds = c => new Set(c ? [...c.location.sources, ...c.phone.sources, ...c.accepting_sources, ...c.status_sources] : []);
+/* ---------------- summary, counts, filters */
+function setSummary(h, p) { $("#headline").innerHTML = h; $("#sub").textContent = p; }
 
-document.addEventListener("click", e => {
-  const t = e.target.closest("[data-toggle],.cite"); if (!t) return;
-  if (t.dataset.toggle !== undefined) { const i = +t.dataset.toggle; state[i].open = !state[i].open; renderItem(i); return; }
-  const i = +t.dataset.i; if (!state[i].open) { state[i].open = true; renderItem(i); }
-  const el = document.getElementById(`src-${i}-${t.dataset.s}`); if (!el) return;
-  el.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest"});
-  el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1500);
+function tally() {
+  const n = r => st.filter(s => s.check?.result === r).length;
+  const u = n("update_needed"), o = n("confirmed"), x = st.filter(s => s.phase === "done" && (!s.check || s.check.result === "unverified")).length + st.filter(s => s.phase === "error").length;
+  const total = listings.length, rest = Math.max(0, total - u - o - x);
+  const pc = v => total ? (v / total * 100).toFixed(2) + "%" : "0%", a = pc(u), b = pc(u + o), c = pc(u + o + x);
+  $("#seg").style.background = `linear-gradient(90deg, var(--upd) 0 ${a}, var(--ok) ${a} ${b}, #9aa7a9 ${b} ${c}, var(--line-2) ${c} 100%)`;
+  $("#lgU").textContent = u; $("#lgO").textContent = o; $("#lgN").textContent = x;
+  $("#fA").textContent = total; $("#fU").textContent = u; $("#fO").textContent = o; $("#fN").textContent = x;
+  return {u, o, x, total, done: u + o + x};
+}
+
+function tick() {
+  const t = tally(), done = st.filter(s => s.phase === "done");
+  const cost = done.reduce((a, s) => a + (s.exa?.cost || 0), 0);
+  const secs = (performance.now() - started) / 1000;
+  $("#mT").textContent = secs < 60 ? `${secs.toFixed(0)} s` : `${Math.floor(secs / 60)}m ${Math.round(secs % 60)}s`;
+  $("#mC").textContent = `$${cost.toFixed(3)}`;
+  $("#mP").textContent = done.length ? `$${(cost / done.length).toFixed(3)}` : "–";
+  if (t.done < t.total) setSummary(`Checking ${t.total} listings`, `${t.done} of ${t.total} done. Four checks run at a time.`);
+  else setSummary(`<span class="n">${t.u} of ${t.total}</span> listings need an update`, `${t.o} confirmed by current web evidence, ${t.x} unverified. Calls only needed for ${t.u + t.x}.`);
+}
+
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  filter = t.dataset.f;
+  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x === t));
+  listings.forEach((_, i) => paint(i));
 });
 
-function renderOutcome(started) {
-  const done = Object.values(state).filter(s => s.phase === "done");
-  const n = r => done.filter(s => s.check?.result === r).length;
-  const upd = n("update_needed"), cost = done.reduce((a, s) => a + (s.exa?.cost || 0), 0);
-  const secs = ((performance.now() - started) / 1000).toFixed(0);
-  const running = done.length + Object.values(state).filter(s => s.phase === "error").length < listings.length;
-  $("#outcome").hidden = false;
-  $("#headline").innerHTML = running
-    ? `Checking ${listings.length} listings, ${done.length} done`
-    : `<b>${upd} of ${listings.length}</b> listings need an update`;
-  $("#sub").textContent = `${n("confirmed")} confirmed, ${n("unverified")} unverified. ${running ? secs + " s so far" : "Checked in " + secs + " s"}, $${cost.toFixed(3)} of Exa searches${done.length ? `, $${(cost / done.length).toFixed(3)} per listing` : ""}.`;
-}
-
-async function checkOne(i, started) {
-  state[i] = {phase: "checking"}; renderItem(i);
+/* ---------------- checking */
+async function checkOne(i) {
+  st[i] = {phase: "checking"}; paint(i);
   try {
     const r = await fetch("/api/verify", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(listings[i])});
     const j = await r.json();
     if (!r.ok) throw new Error(j.detail || r.statusText);
-    state[i] = {phase: "done", check: j.check, sources: j.sources, exa: j.exa};
+    st[i] = {phase: "done", check: j.check, sources: j.sources, exa: j.exa};
   } catch (err) {
-    state[i] = {phase: "error", error: "Check failed: " + err.message};
+    st[i] = {phase: "error", error: err.message};
   }
-  renderItem(i); renderOutcome(started);
+  paint(i); tick(); if (open === i) renderDrawer();
 }
 
 $("#checkBtn").onclick = async () => {
-  $("#checkBtn").disabled = true; $("#loadBtn").disabled = true;
-  const started = performance.now(); state = {};
-  listings.forEach((_, i) => { state[i] = {phase: "waiting"}; renderItem(i); });
-  renderOutcome(started);
+  $("#checkBtn").disabled = $("#loadBtn").disabled = true;
+  $("#checkBtn").textContent = "Checking…";
+  st = listings.map(() => ({phase: "waiting"})); listings.forEach((_, i) => paint(i));
+  started = performance.now(); tick(); timer = setInterval(tick, 500);
   let next = 0;
-  const worker = async () => { while (next < listings.length) await checkOne(next++, started); };
+  const worker = async () => { while (next < listings.length) await checkOne(next++); };
   await Promise.all(Array.from({length: 4}, worker));
-  $("#checkBtn").disabled = false; $("#loadBtn").disabled = false;
+  clearInterval(timer); tick();
+  $("#checkBtn").textContent = "Check again";
+  $("#checkBtn").disabled = $("#loadBtn").disabled = false;
 };
+
+/* ---------------- drawer */
+$("#rows").addEventListener("click", e => { const r = e.target.closest(".row[data-i]"); if (r) openDrawer(+r.dataset.i); });
+
+function openDrawer(i) {
+  const prev = open; open = i;
+  if (prev >= 0) paint(prev); paint(i);
+  if (!$("#drawer").classList.contains("on")) lastFocus = document.activeElement;
+  renderDrawer();
+  $("#drawer").classList.add("on"); $("#scrim").classList.add("on");
+  $("#drawer").focus({preventScroll: true});
+}
+function closeDrawer() {
+  const prev = open; open = -1; if (prev >= 0) paint(prev);
+  $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on");
+  lastFocus?.focus({preventScroll: true});
+}
+$("#dClose").onclick = closeDrawer; $("#scrim").onclick = closeDrawer;
+document.addEventListener("keydown", e => {
+  if (open < 0) return;
+  if (e.key === "Escape") closeDrawer();
+  if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); step(1); }
+  if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); step(-1); }
+});
+const visible = () => listings.map((_, i) => i).filter(i => !document.getElementById("r" + i).hidden);
+function step(d) { const v = visible(), k = v.indexOf(open); if (k + d >= 0 && k + d < v.length) openDrawer(v[k + d]); }
+$("#dPrev").onclick = () => step(-1); $("#dNext").onclick = () => step(1);
+
+const cites = ids => (ids || []).map(id => `<button class="cite" data-s="${id}" aria-label="Show source ${id}">${id}</button>`).join("");
+
+function renderDrawer() {
+  const l = listings[open], s = st[open], c = s.check, v = visible(), k = v.indexOf(open);
+  $("#dTitle").textContent = `${l.name}${l.credential ? ", " + l.credential : ""}`;
+  $("#dSub").textContent = `${l.specialty}, NPI ${l.npi}`;
+  $("#dPos").textContent = `${k + 1} of ${v.length}`;
+  $("#dPrev").disabled = k <= 0; $("#dNext").disabled = k >= v.length - 1;
+  if (!c) {
+    $("#dVerdict").innerHTML = s.phase === "done" ? `<span class="pill unverified">Unverified</span>` : s.phase === "error" ? `<span class="pill error">Error</span>` : `<span class="pill ${s.phase}">${s.phase === "checking" ? "Searching" : "Not checked yet"}</span>`;
+    $("#dBody").innerHTML = `
+      <table class="cmp"><thead><tr><th>Field</th><th>In the directory</th></tr></thead><tbody>
+        <tr><td>Address</td><td>${esc(fullAddr(l))}</td></tr><tr><td>Phone</td><td>${esc(l.phone || "Not listed")}</td></tr></tbody></table>
+      <p class="h4">${s.phase === "error" ? esc(s.error) : s.phase === "done" ? "Exa found no pages about this provider." : "Run a check to compare this listing with the web."}</p>`;
+    return;
+  }
+  const used = new Set([...c.location.sources, ...c.phone.sources, ...c.accepting_sources, ...c.status_sources]);
+  const cell = (listed, f) => f.status === "differs" && f.web_value
+    ? [`<span class="stale">${esc(listed || "Not listed")}</span>`, `<span class="new"><mark>${esc(f.web_value)}</mark></span>${cites(f.sources)}`]
+    : f.status === "matches" ? [esc(listed), `<span class="okt">Matches</span>${cites(f.sources)}`]
+    : [esc(listed || "Not listed"), `<span class="dim">Not found</span>`];
+  const [a1, a2] = cell(fullAddr(l), c.location), [p1, p2] = cell(l.phone, c.phone);
+  $("#dVerdict").innerHTML = `<span class="pill ${c.result}">${LABEL[c.result]}</span><span class="conf">${c.confidence[0].toUpperCase() + c.confidence.slice(1)} confidence</span>`;
+  $("#dBody").innerHTML = `
+    <p class="sum">${esc(c.summary)}</p>
+    <table class="cmp"><thead><tr><th>Field</th><th>In the directory</th><th>On the web</th></tr></thead><tbody>
+      <tr><td>Address</td><td>${a1}</td><td>${a2}</td></tr>
+      <tr><td>Phone</td><td>${p1}</td><td>${p2}</td></tr>
+      <tr><td>New patients</td><td class="dim">Not listed</td><td>${c.accepting_new_patients === "no" ? `<span class="stale" style="text-decoration:none">Not accepting</span>` : NEWPT[c.accepting_new_patients]}${cites(c.accepting_sources)}</td></tr>
+      <tr><td>Practice status</td><td class="dim">Not listed</td><td>${STATUS[c.practice_status]}${cites(c.status_sources)}</td></tr>
+    </tbody></table>
+    <p class="h4">Sources from Exa (${s.sources.length})</p>
+    ${s.sources.map(x => `<div class="src ${used.has(x.id) ? "cited" : ""}" id="s-${x.id}">
+      <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>
+      <div class="m"><b>${x.id}</b>${esc(x.domain)}${x.published ? `, ${x.published}` : ""}${used.has(x.id) ? ", cited" : ""}</div>
+      <p>${esc(x.text)}</p></div>`).join("")}`;
+}
+
+$("#dBody").addEventListener("click", e => {
+  const b = e.target.closest(".cite"); if (!b) return;
+  const el = document.getElementById("s-" + b.dataset.s); if (!el) return;
+  el.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center"});
+  el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1500);
+});
 </script>
 </body>
 </html>
