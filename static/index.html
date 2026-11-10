@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Directory Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f4f7f6; --sheet:#ffffff; --ink:#0f2a2e; --soft:#4d6266; --faint:#7d8f92;
+  --rule:#cbd6d3; --rule-soft:#e2e9e7;
+  --ok:#1d7a58; --ok-bg:#e3f2ea; --upd:#a9520b; --upd-bg:#fbeedd; --unk:#5f6b6d; --unk-bg:#eceff0;
+  --del:#a3261f; --del-bg:#fbe5e3; --ins:#1d7a58; --ins-bg:#dff1e7; --link:#0b5cad;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 "Public Sans",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:40px 24px 96px}
+a{color:var(--link)}
+:focus-visible{outline:3px solid var(--link);outline-offset:2px;border-radius:3px}
+
+/* intro */
+.intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 40px;align-items:end;padding-bottom:28px;border-bottom:1px solid var(--rule)}
+h1{font-size:2.25rem;line-height:1.1;font-weight:700;letter-spacing:-.02em;margin:0}
+.lede{grid-column:1;max-width:62ch;margin:0;color:var(--soft);font-size:1.0625rem}
+.credit{grid-column:2;grid-row:1/3;margin:0;color:var(--faint);font-size:.875rem;text-align:right;line-height:1.6}
+
+/* controls */
+form{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end;margin:28px 0 0}
+label{display:flex;flex-direction:column;gap:5px;font-size:.875rem;font-weight:500;color:var(--soft)}
+select,input{height:42px;font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:9px 11px;min-width:0}
+input[name=state]{width:4.5rem;text-transform:uppercase}
+input[name=city]{width:11rem}
+button{height:42px;font:inherit;font-weight:600;border-radius:6px;padding:0 18px;cursor:pointer;border:1px solid var(--ink)}
+.secondary{background:var(--sheet);color:var(--ink)}
+.primary{background:var(--ink);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+.spacer{flex:1}
+
+/* outcome sentence */
+.outcome{margin:36px 0 14px;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 28px}
+.outcome h2{margin:0;font-size:1.625rem;line-height:1.25;font-weight:600;letter-spacing:-.01em}
+.outcome h2 b{color:var(--upd)}
+.outcome p{margin:0;color:var(--soft);font-size:.9375rem}
+
+/* queue */
+.queue{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
+.head,.row{display:grid;grid-template-columns:minmax(180px,1.1fr) minmax(220px,1.5fr) minmax(150px,.9fr) minmax(240px,1.6fr);gap:20px;padding:14px 20px}
+.head{font-size:.8125rem;font-weight:600;color:var(--soft);border-bottom:1px solid var(--rule);background:#fafcfb}
+.item{border-bottom:1px solid var(--rule-soft)}
+.item:last-child{border-bottom:0}
+.who b{display:block;font-weight:600}
+.who span{display:block;font-size:.875rem;color:var(--soft)}
+.who small{font-size:.8125rem;color:var(--faint)}
+.val{font-size:.9375rem;min-width:0;overflow-wrap:anywhere}
+.val .now{display:block}
+.val del{display:inline;background:var(--del-bg);color:var(--del);text-decoration-thickness:1.5px;padding:1px 3px;border-radius:2px}
+.val ins{display:block;margin-top:5px;background:var(--ins-bg);color:var(--ins);text-decoration:none;padding:1px 3px;border-radius:2px;width:fit-content;max-width:100%}
+.val .ok{display:block;margin-top:4px;font-size:.8125rem;color:var(--ok)}
+.val .none{display:block;margin-top:4px;font-size:.8125rem;color:var(--faint)}
+.cite{height:auto;font:600 .75rem "Public Sans",sans-serif;color:var(--link);background:none;border:0;padding:0 2px;margin-left:2px;cursor:pointer;vertical-align:super}
+.cite:hover{text-decoration:underline}
+
+.result{display:grid;gap:6px;align-content:start}
+.badge{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:.9375rem;width:fit-content}
+.badge:before{content:"";width:10px;height:10px;border-radius:50%;background:currentColor}
+.badge.confirmed{color:var(--ok)} .badge.update_needed{color:var(--upd)} .badge.unverified{color:var(--unk)}
+.badge.waiting{color:var(--faint);font-weight:500}
+.badge.checking{color:var(--soft);font-weight:500}
+.badge.checking:before{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.summary{margin:0;font-size:.9375rem;color:var(--ink)}
+.flag{font-size:.875rem;font-weight:600;color:var(--del)}
+.more{height:auto;justify-self:start;background:none;border:0;padding:0;color:var(--link);font-weight:500;font-size:.875rem}
+.more:hover{text-decoration:underline}
+.item.update_needed{box-shadow:inset 4px 0 0 var(--upd)}
+.item.confirmed{box-shadow:inset 4px 0 0 var(--ok)}
+.item.unverified{box-shadow:inset 4px 0 0 var(--rule)}
+.err{color:var(--del);font-size:.875rem}
+
+.sources{padding:4px 20px 18px calc(20px + 4px);display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+.src{border:1px solid var(--rule-soft);border-radius:8px;padding:10px 12px;font-size:.875rem;background:#fbfcfc;transition:background .5s,border-color .5s}
+.src.cited{border-color:var(--rule)}
+.src.flash{background:#fff4cf;border-color:#e6c766}
+.src a{font-weight:600;text-decoration:none;color:var(--ink)}
+.src a:hover{text-decoration:underline}
+.src .meta{color:var(--faint);font-size:.8125rem;margin:2px 0 5px}
+.src p{margin:0;color:var(--soft);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+
+.empty{padding:48px 20px;color:var(--soft);text-align:left;max-width:60ch}
+.empty b{color:var(--ink)}
+.note{color:var(--faint);font-size:.875rem;margin-top:18px;max-width:80ch}
+
+@media (max-width:900px){
+  .intro{grid-template-columns:1fr}.credit{grid-column:1;grid-row:auto;text-align:left}
+  .head{display:none}
+  .row{grid-template-columns:1fr;gap:12px}
+  .val:before,.result:before{content:attr(data-label);display:block;font-size:.8125rem;font-weight:600;color:var(--faint);margin-bottom:2px}
+  .sources{grid-template-columns:1fr;padding:4px 16px 16px}
+  .spacer{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="intro">
+    <h1>Directory Check</h1>
+    <p class="lede">Health-plan provider directories go stale: doctors move, change numbers or stop taking patients, and members hit dead ends. This checks each listing against what the provider's own pages say today, and shows the correction with its source.</p>
+    <p class="credit">Listings from the CMS NPI Registry<br>Web evidence from Exa</p>
+  </div>
+
+  <form id="load">
+    <label>Specialty
+      <select name="specialty">
+        <option>Psychiatry</option>
+        <option>Child &amp; Adolescent Psychiatry</option>
+        <option>Neurology</option>
+        <option>Family Medicine</option>
+      </select>
+    </label>
+    <label>City<input name="city" value="Indianapolis" required></label>
+    <label>State<input name="state" value="IN" maxlength="2" required></label>
+    <button class="secondary" id="loadBtn">Load listings</button>
+    <span class="spacer"></span>
+    <button type="button" class="primary" id="checkBtn" disabled>Check all listings</button>
+  </form>
+
+  <div class="outcome" id="outcome" hidden><h2 id="headline"></h2><p id="sub"></p></div>
+
+  <div class="queue" id="queue" style="margin-top:24px">
+    <div class="empty"><b>Load a set of listings to start.</b> They come straight from the federal NPI registry, the same self-reported data many plan directories are built on.</div>
+  </div>
+  <p class="note">Results are leads for a network-operations analyst, not final corrections. Sites that only republish the NPI registry are excluded from the search, since they would just repeat the listing back.</p>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let listings = [], state = {};
+const LABEL = {confirmed: "Confirmed", update_needed: "Needs update", unverified: "Unverified"};
+
+$("#load").onsubmit = async e => {
+  e.preventDefault();
+  const q = new URLSearchParams(new FormData(e.target));
+  $("#loadBtn").disabled = true; $("#checkBtn").disabled = true; $("#outcome").hidden = true;
+  $("#queue").innerHTML = `<div class="empty">Loading listings from the NPI registry…</div>`;
+  try {
+    const r = await fetch("/api/listings?" + q); const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || r.statusText);
+    listings = j.listings; state = {};
+    renderQueue();
+    $("#checkBtn").disabled = !listings.length;
+  } catch (err) {
+    $("#queue").innerHTML = `<div class="empty err">Couldn't load listings: ${esc(err.message)}. Check the city and state, then try again.</div>`;
+  } finally { $("#loadBtn").disabled = false; }
+};
+
+function renderQueue() {
+  if (!listings.length) { $("#queue").innerHTML = `<div class="empty">No listings for that specialty and place. Try a larger city or another specialty.</div>`; return; }
+  $("#queue").innerHTML = `<div class="head" role="row"><span>Provider</span><span>Address in directory</span><span>Phone in directory</span><span>Result</span></div>` +
+    listings.map((l, i) => `<div class="item" id="item-${i}"></div>`).join("");
+  listings.forEach((_, i) => renderItem(i));
+}
+
+const cites = (ids, i) => (ids || []).slice(0, 3).map(id => `<button class="cite" data-i="${i}" data-s="${id}" aria-label="Show source ${id}">${id}</button>`).join("");
+
+function field(listed, f, i) {
+  if (!f) return `<span class="now">${esc(listed || "Not listed")}</span>`;
+  if (f.status === "differs" && f.web_value)
+    return `<del>${esc(listed || "Not listed")}</del><ins>${esc(f.web_value)}${cites(f.sources, i)}</ins>`;
+  if (f.status === "matches") return `<span class="now">${esc(listed)}</span><span class="ok">Matches the web${cites(f.sources, i)}</span>`;
+  return `<span class="now">${esc(listed || "Not listed")}</span><span class="none">No current source found</span>`;
+}
+
+function renderItem(i) {
+  const l = listings[i], s = state[i] || {phase: "waiting"}, c = s.check;
+  const el = document.getElementById("item-" + i);
+  el.className = "item " + (c ? c.result : "");
+  const addr = `${l.address}, ${l.city}, ${l.state} ${l.zip}`;
+  let result;
+  if (s.phase === "waiting") result = `<span class="badge waiting">Not checked yet</span>`;
+  else if (s.phase === "checking") result = `<span class="badge checking">Searching the web…</span>`;
+  else if (s.phase === "error") result = `<span class="err">${esc(s.error)}</span>`;
+  else if (!c) result = `<span class="badge unverified">Unverified</span><p class="summary">Exa found no pages about this provider.</p>`;
+  else result = `<span class="badge ${c.result}">${LABEL[c.result]}</span>
+      <p class="summary">${esc(c.summary)}</p>
+      ${c.accepting_new_patients === "no" ? `<span class="flag">Not accepting new patients${cites(c.accepting_sources, i)}</span>` : ""}
+      <button class="more" aria-expanded="${!!s.open}" data-toggle="${i}">${s.open ? "Hide" : "Show"} ${s.sources.length} sources</button>`;
+  el.innerHTML = `<div class="row">
+      <div class="who"><b>${esc(l.name)}${l.credential ? ", " + esc(l.credential) : ""}</b><span>${esc(l.specialty)}</span><small>NPI ${esc(l.npi)}</small></div>
+      <div class="val" data-label="Address in directory">${field(addr, c?.location, i)}</div>
+      <div class="val" data-label="Phone in directory">${field(l.phone, c?.phone, i)}</div>
+      <div class="result" data-label="Result">${result}</div>
+    </div>
+    ${s.open ? `<div class="sources">${s.sources.map(src => `
+      <div class="src ${citedIds(c).has(src.id) ? "cited" : ""}" id="src-${i}-${src.id}">
+        <a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.title)}</a>
+        <div class="meta">${src.id}, ${esc(src.domain)}${src.published ? ", " + src.published : ""}</div>
+        <p>${esc(src.text)}</p></div>`).join("")}</div>` : ""}`;
+}
+
+const citedIds = c => new Set(c ? [...c.location.sources, ...c.phone.sources, ...c.accepting_sources, ...c.status_sources] : []);
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-toggle],.cite"); if (!t) return;
+  if (t.dataset.toggle !== undefined) { const i = +t.dataset.toggle; state[i].open = !state[i].open; renderItem(i); return; }
+  const i = +t.dataset.i; if (!state[i].open) { state[i].open = true; renderItem(i); }
+  const el = document.getElementById(`src-${i}-${t.dataset.s}`); if (!el) return;
+  el.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest"});
+  el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1500);
+});
+
+function renderOutcome(started) {
+  const done = Object.values(state).filter(s => s.phase === "done");
+  const n = r => done.filter(s => s.check?.result === r).length;
+  const upd = n("update_needed"), cost = done.reduce((a, s) => a + (s.exa?.cost || 0), 0);
+  const secs = ((performance.now() - started) / 1000).toFixed(0);
+  const running = done.length + Object.values(state).filter(s => s.phase === "error").length < listings.length;
+  $("#outcome").hidden = false;
+  $("#headline").innerHTML = running
+    ? `Checking ${listings.length} listings, ${done.length} done`
+    : `<b>${upd} of ${listings.length}</b> listings need an update`;
+  $("#sub").textContent = `${n("confirmed")} confirmed, ${n("unverified")} unverified. ${running ? secs + " s so far" : "Checked in " + secs + " s"}, $${cost.toFixed(3)} of Exa searches${done.length ? `, $${(cost / done.length).toFixed(3)} per listing` : ""}.`;
+}
+
+async function checkOne(i, started) {
+  state[i] = {phase: "checking"}; renderItem(i);
+  try {
+    const r = await fetch("/api/verify", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(listings[i])});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || r.statusText);
+    state[i] = {phase: "done", check: j.check, sources: j.sources, exa: j.exa};
+  } catch (err) {
+    state[i] = {phase: "error", error: "Check failed: " + err.message};
+  }
+  renderItem(i); renderOutcome(started);
+}
+
+$("#checkBtn").onclick = async () => {
+  $("#checkBtn").disabled = true; $("#loadBtn").disabled = true;
+  const started = performance.now(); state = {};
+  listings.forEach((_, i) => { state[i] = {phase: "waiting"}; renderItem(i); });
+  renderOutcome(started);
+  let next = 0;
+  const worker = async () => { while (next < listings.length) await checkOne(next++, started); };
+  await Promise.all(Array.from({length: 4}, worker));
+  $("#checkBtn").disabled = false; $("#loadBtn").disabled = false;
+};
+</script>
+</body>
+</html>
