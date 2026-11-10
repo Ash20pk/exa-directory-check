@@ -2,6 +2,8 @@
 
 Live: https://exa-directory-check.vercel.app
 
+The case for Elevance, on one page: [ONE_PAGER.md](ONE_PAGER.md)
+
 **Prospect:** Elevance Health (Anthem), on the Fortune 500.
 **Problem:** stale provider directories, known as "ghost networks."
 **Built on:** the Exa Search API.
